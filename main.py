@@ -13,9 +13,10 @@ CREATE TABLE IF NOT EXISTS sensor_logs (
     temperature REAL,
     humidity REAL,
     pressure REAL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     vitality_score INTEGER,
-    message TEXT
+    message TEXT,
+    source TEXT DEFAULT 'sensor',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )
 """)
 conn.commit()
