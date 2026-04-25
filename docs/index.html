@@ -5,260 +5,281 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🌿 バジルの状態</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --accent: #16a34a;
-      --bg-top: #edf7ef;
-      --bg-bot: #f5f7f4;
+      --bg1: #0c4a24;
+      --bg2: #166534;
     }
 
+    /* ── Page ── */
     body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-      background: radial-gradient(ellipse at top, var(--bg-top), var(--bg-bot));
-      color: #1a1f1b;
-      padding: 24px 16px;
-      transition: background 0.6s ease;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px 32px;
+      font-family: -apple-system, "Helvetica Neue", "Noto Sans JP",
+                   "Hiragino Kaku Gothic ProN", sans-serif;
+      background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 100%);
+      transition: background 0.7s ease;
+      -webkit-font-smoothing: antialiased;
     }
 
-    .container {
-      width: min(520px, 100%);
+    /* ── Glass card ── */
+    .card {
+      width: min(400px, 100%);
+      background: rgba(255, 255, 255, 0.13);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 28px;
+      padding: 32px 24px 28px;
+      color: #fff;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
       text-align: center;
     }
 
-    h1 {
-      margin: 0 0 20px;
-      font-size: clamp(26px, 6vw, 38px);
-      letter-spacing: 0.03em;
-      font-weight: 700;
+    /* ── Plant title ── */
+    .plant-title {
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      opacity: 0.75;
+      margin-bottom: 24px;
+      text-transform: uppercase;
     }
 
-    /* ── Status card ── */
-    .card {
-      border-radius: 20px;
-      background: var(--accent);
-      color: #fff;
-      padding: 28px 24px 24px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-      transition: background 0.5s ease;
-      position: relative;
+    /* ── Score ── */
+    .score-section {
+      margin-bottom: 28px;
     }
 
-    /* Vitality score badge */
-    .vitality-badge {
+    .score-number {
+      font-size: clamp(80px, 22vw, 112px);
+      font-weight: 800;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      margin-bottom: 12px;
+    }
+
+    .status-chip {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.18);
       border-radius: 40px;
-      padding: 6px 18px;
-      font-size: clamp(13px, 3vw, 16px);
+      padding: 6px 16px 6px 12px;
+      font-size: clamp(14px, 4vw, 17px);
       font-weight: 600;
-      margin-bottom: 18px;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.02em;
     }
 
-    .vitality-dot {
-      width: 10px;
-      height: 10px;
+    .status-dot {
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       background: #fff;
       flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
     }
 
-    /* Sensor rows */
+    /* ── Sensor tiles ── */
     .sensors {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 12px;
     }
 
-    .sensor-box {
-      background: rgba(255, 255, 255, 0.18);
-      border-radius: 12px;
-      padding: 14px 10px 12px;
-    }
-
-    .sensor-label {
-      font-size: clamp(11px, 2.5vw, 13px);
-      opacity: 0.85;
-      margin-bottom: 4px;
-      letter-spacing: 0.05em;
+    .sensor-tile {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 18px;
+      padding: 18px 12px 14px;
     }
 
     .sensor-value {
-      font-size: clamp(28px, 7vw, 40px);
+      font-size: clamp(34px, 10vw, 46px);
       font-weight: 700;
       line-height: 1;
+      letter-spacing: -0.02em;
     }
 
     .sensor-unit {
-      font-size: clamp(13px, 3vw, 16px);
-      opacity: 0.85;
-      margin-left: 2px;
-    }
-
-    /* Message row */
-    .message-row {
-      background: rgba(255, 255, 255, 0.18);
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: clamp(15px, 4vw, 19px);
+      font-size: clamp(16px, 4.5vw, 21px);
       font-weight: 500;
-      line-height: 1.5;
-      margin-bottom: 0;
+      opacity: 0.8;
+      margin-left: 1px;
     }
 
-    /* Loading / error states */
-    .state-message {
-      font-size: clamp(18px, 5vw, 24px);
-      padding: 24px 0;
-      opacity: 0.9;
+    .sensor-label {
+      margin-top: 5px;
+      font-size: clamp(11px, 3vw, 13px);
+      opacity: 0.65;
+      letter-spacing: 0.07em;
+    }
+
+    /* ── Message ── */
+    .message {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 13px 18px;
+      font-size: clamp(14px, 4vw, 17px);
+      font-weight: 500;
+      line-height: 1.55;
+      opacity: 0.92;
+    }
+
+    /* ── Loading / error ── */
+    .state-msg {
+      font-size: clamp(17px, 5vw, 22px);
+      opacity: 0.8;
+      padding: 28px 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
 
     .spinner {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      border: 3px solid rgba(255, 255, 255, 0.4);
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
       border-top-color: #fff;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      vertical-align: middle;
-      margin-right: 10px;
+      flex-shrink: 0;
+      animation: spin 0.75s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Footer */
+    /* ── Footer ── */
     .footer {
-      margin-top: 14px;
+      margin-top: 18px;
+      color: rgba(255, 255, 255, 0.5);
       font-size: 13px;
-      color: #6b7280;
-      line-height: 1.8;
+      line-height: 1.9;
+      text-align: center;
     }
 
-    .updated-time {
+    .footer strong {
+      color: rgba(255, 255, 255, 0.8);
       font-weight: 600;
-      color: #374151;
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <h1>🌿 バジルの状態</h1>
 
-    <div id="card" class="card" aria-live="polite">
-      <div class="state-message">
-        <span class="spinner"></span>読み込み中…
-      </div>
+  <div id="card" class="card" aria-live="polite">
+    <div class="plant-title">🌿 バジルの状態</div>
+    <div class="state-msg">
+      <span class="spinner"></span>読み込み中…
     </div>
+  </div>
 
-    <div class="footer">
-      <span id="updated-at"></span>
-      <br>10秒ごとに自動更新
-    </div>
-  </main>
+  <div id="footer" class="footer"></div>
 
   <script src="config.js"></script>
   <script>
-    const SUPABASE_URL = window.PLANT_CONFIG?.SUPABASE_URL || "";
-    const SUPABASE_KEY = window.PLANT_CONFIG?.SUPABASE_KEY || "";
+    const BASE = (window.PLANT_CONFIG?.SUPABASE_URL || "").replace(/\/$/, "");
+    const KEY  = window.PLANT_CONFIG?.SUPABASE_KEY || "";
 
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
+    if (!BASE || !KEY) {
+      showState("設定が見つかりません");
+    }
+
+    /* ─ Status theme ─ */
+    const THEMES = {
+      good:    { bg1: "#0c4a24", bg2: "#166534", label: "良好"   },
+      caution: { bg1: "#451a03", bg2: "#78350f", label: "注意"   },
+      alert:   { bg1: "#450a0a", bg2: "#7f1d1d", label: "要対応" },
+    };
+
+    function theme(score) {
+      if (score >= 80) return THEMES.good;
+      if (score >= 60) return THEMES.caution;
+      return THEMES.alert;
+    }
+
+    /* ─ Helpers ─ */
+    function toJst(utcStr) {
+      const d = new Date(new Date(utcStr).getTime() + 9 * 3600 * 1000);
+      return d.toLocaleString("ja-JP", { hour12: false });
+    }
+
+    function fmt(v, d = 1) {
+      return v != null ? Number(v).toFixed(d) : "--";
+    }
+
+    function setBackground(t) {
+      document.documentElement.style.setProperty("--bg1", t.bg1);
+      document.documentElement.style.setProperty("--bg2", t.bg2);
+    }
+
+    function showState(msg) {
       document.getElementById("card").innerHTML =
-        '<div class="state-message">設定が見つかりません</div>';
-      throw new Error("PLANT_CONFIG is missing");
+        `<div class="plant-title">🌿 バジルの状態</div>
+         <div class="state-msg">${msg}</div>`;
+      document.getElementById("footer").innerHTML = "";
     }
 
-    function toJst(utcString) {
-      const utc = new Date(utcString);
-      const jst = new Date(utc.getTime() + 9 * 60 * 60 * 1000);
-      return jst.toLocaleString("ja-JP", { hour12: false });
-    }
-
-    function vitalityInfo(score) {
-      if (score >= 80) return { color: "#16a34a", label: "良好", bgTop: "#edf7ef" };
-      if (score >= 60) return { color: "#d97706", label: "注意", bgTop: "#fef9ec" };
-      return { color: "#dc2626", label: "要対応", bgTop: "#fef2f2" };
-    }
-
-    function fmt(val, digits = 1) {
-      return val != null ? Number(val).toFixed(digits) : "--";
-    }
-
-    function renderCard(d) {
+    /* ─ Render ─ */
+    function render(d) {
       const score = d.vitality_score ?? 0;
-      const info = vitalityInfo(score);
-      const card = document.getElementById("card");
+      const t     = theme(score);
+      setBackground(t);
 
-      card.style.background = info.color;
-      document.documentElement.style.setProperty("--bg-top", info.bgTop);
+      document.getElementById("card").innerHTML = `
+        <div class="plant-title">🌿 バジルの状態</div>
 
-      card.innerHTML = `
-        <div class="vitality-badge">
-          <span class="vitality-dot"></span>
-          活力スコア ${score} &nbsp;·&nbsp; ${info.label}
+        <div class="score-section">
+          <div class="score-number">${score}</div>
+          <div class="status-chip">
+            <span class="status-dot"></span>${t.label}
+          </div>
         </div>
+
         <div class="sensors">
-          <div class="sensor-box">
-            <div class="sensor-label">温度</div>
+          <div class="sensor-tile">
             <div class="sensor-value">${fmt(d.temperature)}<span class="sensor-unit">℃</span></div>
+            <div class="sensor-label">温度</div>
           </div>
-          <div class="sensor-box">
-            <div class="sensor-label">湿度</div>
+          <div class="sensor-tile">
             <div class="sensor-value">${fmt(d.humidity)}<span class="sensor-unit">%</span></div>
+            <div class="sensor-label">湿度</div>
           </div>
         </div>
-        <div class="message-row">${d.message ?? "状態不明"}</div>
+
+        <div class="message">${d.message || "状態不明"}</div>
       `;
 
-      const updatedEl = document.getElementById("updated-at");
-      updatedEl.innerHTML =
-        `最終更新：<span class="updated-time">${toJst(d.created_at)}</span>`;
+      document.getElementById("footer").innerHTML =
+        `最終更新：<strong>${toJst(d.created_at)}</strong><br>10秒ごとに自動更新`;
     }
 
+    /* ─ Fetch ─ */
     async function loadData() {
+      if (!BASE || !KEY) return;
       try {
-        const url =
-          `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/sensor_logs` +
+        const res = await fetch(
+          `${BASE}/rest/v1/sensor_logs` +
           `?select=temperature,humidity,pressure,vitality_score,message,created_at` +
-          `&order=created_at.desc&limit=1`;
-
-        const res = await fetch(url, {
-          headers: {
-            apikey: SUPABASE_KEY,
-            Authorization: `Bearer ${SUPABASE_KEY}`
-          }
-        });
-
+          `&order=created_at.desc&limit=1`,
+          { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
+        );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
         const rows = await res.json();
-        if (!rows.length) {
-          document.getElementById("card").innerHTML =
-            '<div class="state-message">データがありません</div>';
-          return;
-        }
-
-        renderCard(rows[0]);
-      } catch (err) {
-        document.getElementById("card").innerHTML =
-          '<div class="state-message">データ取得失敗</div>';
-        document.getElementById("updated-at").textContent = "";
-        console.error(err);
+        if (!rows.length) { showState("データがありません"); return; }
+        render(rows[0]);
+      } catch (e) {
+        showState("データ取得失敗");
+        console.error(e);
       }
     }
 
     loadData();
-    setInterval(loadData, 10000);
+    setInterval(loadData, 10_000);
   </script>
 </body>
 </html>
