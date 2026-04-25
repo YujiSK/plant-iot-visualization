@@ -12,6 +12,20 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/sensor_logs" if SUPABASE_URL else ""
 
+def get_interval_seconds():
+    """Read sensor interval from env and fall back to 300 seconds."""
+    value = os.getenv("SENSOR_INTERVAL_SECONDS", "300")
+    try:
+        interval = int(value)
+        if interval <= 0:
+            raise ValueError("interval must be positive")
+        return interval
+    except Exception:
+        print(f"invalid SENSOR_INTERVAL_SECONDS='{value}', using 300", flush=True)
+        return 300
+
+SENSOR_INTERVAL_SECONDS = get_interval_seconds()
+
 def score_temp(temperature):
     """Temperature score: optimal 24-28, acceptable 20-30, poor otherwise"""
     if 24 <= temperature <= 28:
@@ -116,4 +130,4 @@ while True:
         print("error:", e)
         sense.clear([255, 0, 0])  # Red on error
 
-    time.sleep(10)
+    time.sleep(SENSOR_INTERVAL_SECONDS)
