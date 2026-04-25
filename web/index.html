@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plant Status</title>
+  <style>
+    :root {
+      --bg: #f5f7f4;
+      --text: #1a1f1b;
+      --card: #6b7280;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: radial-gradient(circle at top, #edf7ef, var(--bg));
+      color: var(--text);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .container {
+      width: min(640px, 100%);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: clamp(28px, 4vw, 40px);
+      letter-spacing: 0.02em;
+    }
+
+    .card {
+      border-radius: 16px;
+      background: var(--card);
+      color: white;
+      padding: 24px 20px;
+      font-size: clamp(20px, 2.8vw, 28px);
+      line-height: 1.7;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.15);
+      transition: background 0.4s ease;
+    }
+
+    .muted {
+      margin-top: 14px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>🌿 バジルの状態</h1>
+    <section id="card" class="card" aria-live="polite">Loading...</section>
+    <p class="muted">10秒ごとに更新</p>
+  </main>
+
+  <script>
+    const SUPABASE_URL = "https://REPLACE_WITH_YOUR_PROJECT.supabase.co";
+    const SUPABASE_KEY = "REPLACE_WITH_YOUR_PUBLISHABLE_KEY";
+
+    function toJstString(utcString) {
+      const utcDate = new Date(utcString);
+      const jstDate = new Date(utcDate.getTime() + 9 * 60 * 60 * 1000);
+      return jstDate.toLocaleString("ja-JP", { hour12: false });
+    }
+
+    function pickCardColor(score) {
+      if (score >= 80) return "#16a34a";
+      if (score >= 60) return "#d97706";
+      return "#dc2626";
+    }
+
+    async function loadData() {
+      try {
+        const endpoint = `${SUPABASE_URL.replace(/\/$/, "")}/rest/v1/sensor_logs?select=temperature,humidity,message,vitality_score,created_at&order=created_at.desc&limit=1`;
+
+        const response = await fetch(endpoint, {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const rows = await response.json();
+        if (!rows.length) {
+          document.getElementById("card").textContent = "データがありません";
+          return;
+        }
+
+        const d = rows[0];
+        const card = document.getElementById("card");
+        card.style.background = pickCardColor(d.vitality_score ?? 0);
+        card.innerHTML = `
+          温度：${Number(d.temperature).toFixed(1)}℃<br>
+          湿度：${Number(d.humidity).toFixed(1)}%<br>
+          状態：${d.message ?? "不明"}<br>
+          最終更新：${toJstString(d.created_at)}
+        `;
+      } catch (error) {
+        document.getElementById("card").textContent = `読み込み失敗: ${error.message}`;
+      }
+    }
+
+    loadData();
+    setInterval(loadData, 10000);
+  </script>
+</body>
+</html>
