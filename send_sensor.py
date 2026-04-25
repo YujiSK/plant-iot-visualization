@@ -11,6 +11,7 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/sensor_logs" if SUPABASE_URL else ""
+LED_HOLD_SECONDS = float(os.getenv("LED_HOLD_SECONDS", "2"))
 
 def get_interval_seconds():
     """Read sensor interval from env and fall back to 300 seconds."""
@@ -78,15 +79,17 @@ def send_to_supabase(payload):
         print("SUPABASE ERROR:", exc, flush=True)
 
 def show_led_status(sense, vitality_score):
-    """Display vitality status on Sense HAT LED with background color"""
+    """Show status color briefly, then clear LED to avoid constant lighting."""
     if vitality_score >= 80:
         bg = [0, 255, 0]      # Green for good
     elif vitality_score >= 60:
         bg = [255, 255, 0]    # Yellow for caution
     else:
         bg = [255, 0, 0]      # Red for poor
-    
+
     sense.clear(bg)
+    time.sleep(max(0.0, LED_HOLD_SECONDS))
+    sense.clear()
 
 while True:
     temperature = round(sense.get_temperature(), 2)
@@ -129,5 +132,7 @@ while True:
     except Exception as e:
         print("error:", e)
         sense.clear([255, 0, 0])  # Red on error
+        time.sleep(max(0.0, LED_HOLD_SECONDS))
+        sense.clear()
 
     time.sleep(SENSOR_INTERVAL_SECONDS)
