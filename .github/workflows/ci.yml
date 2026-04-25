@@ -1,0 +1,16 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  validate-html:
+    name: Validate HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docs/index.html
+        run: npx --yes html-validate docs/index.html

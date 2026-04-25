@@ -12,7 +12,6 @@
       --bg2: #166534;
     }
 
-    /* ── Page ── */
     body {
       min-height: 100dvh;
       display: flex;
@@ -41,7 +40,6 @@
       text-align: center;
     }
 
-    /* ── Plant title ── */
     .plant-title {
       font-size: clamp(15px, 4vw, 18px);
       font-weight: 600;
@@ -82,7 +80,7 @@
       border-radius: 50%;
       background: #fff;
       flex-shrink: 0;
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
     }
 
     /* ── Sensor tiles ── */
@@ -171,25 +169,22 @@
 </head>
 <body>
 
-  <div id="card" class="card" aria-live="polite">
-    <div class="plant-title">🌿 バジルの状態</div>
+  <main id="card" class="card" aria-live="polite">
+    <h1 class="plant-title">🌿 バジルの状態</h1>
     <div class="state-msg">
       <span class="spinner"></span>読み込み中…
     </div>
-  </div>
+  </main>
 
-  <div id="footer" class="footer"></div>
+  <footer id="footer" class="footer"></footer>
 
   <script src="config.js"></script>
   <script>
     const BASE = (window.PLANT_CONFIG?.SUPABASE_URL || "").replace(/\/$/, "");
     const KEY  = window.PLANT_CONFIG?.SUPABASE_KEY || "";
 
-    if (!BASE || !KEY) {
-      showState("設定が見つかりません");
-    }
+    if (!BASE || !KEY) showState("設定が見つかりません");
 
-    /* ─ Status theme ─ */
     const THEMES = {
       good:    { bg1: "#0c4a24", bg2: "#166534", label: "良好"   },
       caution: { bg1: "#451a03", bg2: "#78350f", label: "注意"   },
@@ -202,7 +197,6 @@
       return THEMES.alert;
     }
 
-    /* ─ Helpers ─ */
     function toJst(utcStr) {
       const d = new Date(new Date(utcStr).getTime() + 9 * 3600 * 1000);
       return d.toLocaleString("ja-JP", { hour12: false });
@@ -217,54 +211,69 @@
       document.documentElement.style.setProperty("--bg2", t.bg2);
     }
 
+    /* showState: msg is always a hardcoded constant, but use textContent
+       to ensure future callers (e.g. error.message) cannot inject HTML. */
     function showState(msg) {
-      document.getElementById("card").innerHTML =
-        `<div class="plant-title">🌿 バジルの状態</div>
-         <div class="state-msg">${msg}</div>`;
+      const card = document.getElementById("card");
+      card.innerHTML =
+        `<h1 class="plant-title">🌿 バジルの状態</h1>
+         <div class="state-msg"></div>`;
+      card.querySelector(".state-msg").textContent = msg;
       document.getElementById("footer").innerHTML = "";
     }
 
-    /* ─ Render ─ */
     function render(d) {
       const score = d.vitality_score ?? 0;
       const t     = theme(score);
       setBackground(t);
 
-      document.getElementById("card").innerHTML = `
-        <div class="plant-title">🌿 バジルの状態</div>
-
+      /* Build static skeleton via innerHTML (no user data here),
+         then populate dynamic values via textContent to prevent XSS. */
+      const card = document.getElementById("card");
+      card.innerHTML = `
+        <h1 class="plant-title">🌿 バジルの状態</h1>
         <div class="score-section">
-          <div class="score-number">${score}</div>
+          <div class="score-number" id="score-num"></div>
           <div class="status-chip">
-            <span class="status-dot"></span>${t.label}
+            <span class="status-dot"></span><span id="status-label"></span>
           </div>
         </div>
-
         <div class="sensors">
           <div class="sensor-tile">
-            <div class="sensor-value">${fmt(d.temperature)}<span class="sensor-unit">℃</span></div>
+            <div class="sensor-value">
+              <span id="temp-val"></span><span class="sensor-unit">℃</span>
+            </div>
             <div class="sensor-label">温度</div>
           </div>
           <div class="sensor-tile">
-            <div class="sensor-value">${fmt(d.humidity)}<span class="sensor-unit">%</span></div>
+            <div class="sensor-value">
+              <span id="hum-val"></span><span class="sensor-unit">%</span>
+            </div>
             <div class="sensor-label">湿度</div>
           </div>
         </div>
-
-        <div class="message">${d.message || "状態不明"}</div>
+        <div class="message" id="msg-box"></div>
       `;
 
-      document.getElementById("footer").innerHTML =
-        `最終更新：<strong>${toJst(d.created_at)}</strong><br>10秒ごとに自動更新`;
+      document.getElementById("score-num").textContent    = score;
+      document.getElementById("status-label").textContent = t.label;
+      document.getElementById("temp-val").textContent     = fmt(d.temperature);
+      document.getElementById("hum-val").textContent      = fmt(d.humidity);
+      document.getElementById("msg-box").textContent      = d.message || "状態不明";
+
+      const footer = document.getElementById("footer");
+      const strong = document.createElement("strong");
+      strong.textContent = toJst(d.created_at);
+      footer.innerHTML = "";
+      footer.append("最終更新：", strong, document.createElement("br"), "10秒ごとに自動更新");
     }
 
-    /* ─ Fetch ─ */
     async function loadData() {
       if (!BASE || !KEY) return;
       try {
         const res = await fetch(
           `${BASE}/rest/v1/sensor_logs` +
-          `?select=temperature,humidity,pressure,vitality_score,message,created_at` +
+          `?select=temperature,humidity,vitality_score,message,created_at` +
           `&order=created_at.desc&limit=1`,
           { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
         );
