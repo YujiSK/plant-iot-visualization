@@ -152,6 +152,69 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Demo mode bar ── */
+    .demo-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: min(400px, 100%);
+    }
+
+    .demo-btn {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 30px;
+      color: rgba(255, 255, 255, 0.7);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 7px 16px;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .demo-btn:hover {
+      background: rgba(255, 255, 255, 0.24);
+      color: #fff;
+    }
+
+    .demo-btn.active {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: transparent;
+      color: #1a1f1b;
+      font-weight: 700;
+    }
+
+    /* Inline "DEMO" badge inside the card title */
+    .demo-tag {
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 4px;
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      margin-left: 8px;
+      padding: 2px 6px;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    /* Footer demo mode indicator */
+    .demo-indicator {
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 20px;
+      color: rgba(255, 255, 255, 0.8);
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      padding: 3px 12px;
+    }
+
     /* ── Footer ── */
     .footer {
       margin-top: 18px;
@@ -176,6 +239,13 @@
     </div>
   </main>
 
+  <nav id="demo-bar" class="demo-bar" aria-label="表示モード切替">
+    <button type="button" class="demo-btn active" data-demo="live">通常</button>
+    <button type="button" class="demo-btn" data-demo="good">良好</button>
+    <button type="button" class="demo-btn" data-demo="caution">注意</button>
+    <button type="button" class="demo-btn" data-demo="alert">要対応</button>
+  </nav>
+
   <footer id="footer" class="footer"></footer>
 
   <script src="config.js"></script>
@@ -183,14 +253,26 @@
     const BASE = (window.PLANT_CONFIG?.SUPABASE_URL || "").replace(/\/$/, "");
     const KEY  = window.PLANT_CONFIG?.SUPABASE_KEY || "";
 
-    if (!BASE || !KEY) showState("設定が見つかりません");
-
+    // ── Themes ──
     const THEMES = {
       good:    { bg1: "#0c4a24", bg2: "#166534", label: "良好"   },
       caution: { bg1: "#451a03", bg2: "#78350f", label: "注意"   },
       alert:   { bg1: "#450a0a", bg2: "#7f1d1d", label: "要対応" },
     };
 
+    // ── Demo fixed data ──
+    const DEMO_DATA = {
+      good:    { temperature: 26.0, humidity: 50.0, vitality_score: 92, message: "安定しています"    },
+      caution: { temperature: 30.5, humidity: 38.0, vitality_score: 68, message: "やや注意が必要です" },
+      alert:   { temperature: 36.0, humidity: 28.0, vitality_score: 40, message: "乾燥しています"    },
+    };
+
+    // ?demo=good|warning|danger  →  internal key
+    const URL_DEMO_MAP = { good: "good", warning: "caution", danger: "alert" };
+
+    let demoMode = null; // null = live  |  "good" | "caution" | "alert"
+
+    // ── Helpers ──
     function theme(score) {
       if (score >= 80) return THEMES.good;
       if (score >= 60) return THEMES.caution;
@@ -211,8 +293,7 @@
       document.documentElement.style.setProperty("--bg2", t.bg2);
     }
 
-    /* showState: msg is always a hardcoded constant, but use textContent
-       to ensure future callers (e.g. error.message) cannot inject HTML. */
+    // ── State display ──
     function showState(msg) {
       const card = document.getElementById("card");
       card.innerHTML =
@@ -222,16 +303,18 @@
       document.getElementById("footer").innerHTML = "";
     }
 
+    /* Build static card skeleton with innerHTML (no user data interpolated),
+       then set all dynamic values via textContent to prevent XSS. */
     function render(d) {
       const score = d.vitality_score ?? 0;
       const t     = theme(score);
       setBackground(t);
 
-      /* Build static skeleton via innerHTML (no user data here),
-         then populate dynamic values via textContent to prevent XSS. */
       const card = document.getElementById("card");
       card.innerHTML = `
-        <h1 class="plant-title">🌿 バジルの状態</h1>
+        <h1 class="plant-title">
+          🌿 バジルの状態${demoMode ? '<span class="demo-tag">demo</span>' : ''}
+        </h1>
         <div class="score-section">
           <div class="score-number" id="score-num"></div>
           <div class="status-chip">
@@ -262,13 +345,48 @@
       document.getElementById("msg-box").textContent      = d.message || "状態不明";
 
       const footer = document.getElementById("footer");
-      const strong = document.createElement("strong");
-      strong.textContent = toJst(d.created_at);
-      footer.innerHTML = "";
-      footer.append("最終更新：", strong, document.createElement("br"), "10秒ごとに自動更新");
+      if (demoMode) {
+        footer.innerHTML = "";
+        const badge = document.createElement("span");
+        badge.className = "demo-indicator";
+        badge.textContent = "デモモード表示中";
+        footer.appendChild(badge);
+      } else {
+        const strong = document.createElement("strong");
+        strong.textContent = toJst(d.created_at);
+        footer.innerHTML = "";
+        footer.append("最終更新：", strong, document.createElement("br"), "10秒ごとに自動更新");
+      }
     }
 
+    // ── Demo mode controls ──
+    function activateDemo(key) {
+      demoMode = key;
+      render({ ...DEMO_DATA[key], created_at: new Date().toISOString() });
+      syncButtons();
+    }
+
+    function deactivateDemo() {
+      demoMode = null;
+      syncButtons();
+      loadData();
+    }
+
+    function syncButtons() {
+      document.querySelectorAll(".demo-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.demo === (demoMode ?? "live"));
+      });
+    }
+
+    document.getElementById("demo-bar").addEventListener("click", e => {
+      const btn = e.target.closest(".demo-btn");
+      if (!btn) return;
+      btn.dataset.demo === "live" ? deactivateDemo() : activateDemo(btn.dataset.demo);
+    });
+
+    // ── Fetch (skipped while demo mode is active) ──
     async function loadData() {
+      if (demoMode) return;
       if (!BASE || !KEY) return;
       try {
         const res = await fetch(
@@ -287,7 +405,20 @@
       }
     }
 
-    loadData();
+    // ── Initialize ──
+    const urlParam    = new URLSearchParams(location.search).get("demo");
+    const initialDemo = URL_DEMO_MAP[urlParam] ?? null;
+
+    if (initialDemo) {
+      activateDemo(initialDemo);
+    } else if (!BASE || !KEY) {
+      showState("設定が見つかりません");
+      syncButtons();
+    } else {
+      syncButtons();
+      loadData();
+    }
+
     setInterval(loadData, 10_000);
   </script>
 </body>
