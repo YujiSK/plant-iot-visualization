@@ -1,0 +1,15 @@
+[Unit]
+Description=Plant IoT Sense HAT Sensor Sender
+After=network.target plant-api.service
+Requires=plant-api.service
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/plant-iot
+Environment="PATH=/home/pi/plant-iot/.venv/bin"
+ExecStart=/home/pi/plant-iot/.venv/bin/python /home/pi/plant-iot/send_sensor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
