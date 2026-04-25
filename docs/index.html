@@ -59,9 +59,15 @@
     <p class="muted">10秒ごとに更新</p>
   </main>
 
+  <script src="config.js"></script>
   <script>
-    const SUPABASE_URL = "https://oawkrkgnjkldfyvjcrgx.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_FW-Smj9CLG1iWGxuoBer4w_vRDNURrT";
+    const SUPABASE_URL = window.PLANT_CONFIG?.SUPABASE_URL || "";
+    const SUPABASE_KEY = window.PLANT_CONFIG?.SUPABASE_KEY || "";
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      document.getElementById("card").textContent = "設定が見つかりません";
+      throw new Error("PLANT_CONFIG is missing");
+    }
 
     function toJstString(utcString) {
       const utcDate = new Date(utcString);
