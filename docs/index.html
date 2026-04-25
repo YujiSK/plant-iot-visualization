@@ -165,6 +165,40 @@
       color: rgba(255, 255, 255, 0.8);
       font-weight: 600;
     }
+
+    /* ── Demo mode bar ── */
+    .demo-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .demo-btn {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .demo-btn:hover {
+      background: rgba(255, 255, 255, 0.22);
+      color: #fff;
+    }
+
+    .demo-btn.active {
+      background: rgba(255, 255, 255, 0.32);
+      color: #fff;
+      font-weight: 700;
+      border-color: rgba(255, 255, 255, 0.65);
+    }
   </style>
 </head>
 <body>
@@ -175,6 +209,13 @@
       <span class="spinner"></span>読み込み中…
     </div>
   </main>
+
+  <div id="demo-bar" class="demo-bar" role="group" aria-label="表示モード切替">
+    <button type="button" data-mode="normal" class="demo-btn active">通常</button>
+    <button type="button" data-mode="good" class="demo-btn">良好</button>
+    <button type="button" data-mode="warning" class="demo-btn">注意</button>
+    <button type="button" data-mode="danger" class="demo-btn">要対応</button>
+  </div>
 
   <footer id="footer" class="footer"></footer>
 
@@ -190,6 +231,23 @@
       caution: { bg1: "#451a03", bg2: "#78350f", label: "注意"   },
       alert:   { bg1: "#450a0a", bg2: "#7f1d1d", label: "要対応" },
     };
+
+    const DEMO_DATA = {
+      good: {
+        temperature: 26.0, humidity: 50.0, pressure: 1013,
+        vitality_score: 92, message: "安定しています",
+      },
+      warning: {
+        temperature: 30.5, humidity: 38.0, pressure: 1013,
+        vitality_score: 68, message: "やや注意が必要です",
+      },
+      danger: {
+        temperature: 36.0, humidity: 28.0, pressure: 1013,
+        vitality_score: 40, message: "乾燥しています",
+      },
+    };
+
+    let demoMode = null;
 
     function theme(score) {
       if (score >= 80) return THEMES.good;
@@ -268,7 +326,39 @@
       footer.append("最終更新：", strong, document.createElement("br"), "10秒ごとに自動更新");
     }
 
+    function renderDemo(mode) {
+      render({ ...DEMO_DATA[mode], created_at: new Date().toISOString() });
+      const footer = document.getElementById("footer");
+      footer.innerHTML = "";
+      const strong = document.createElement("strong");
+      strong.textContent = "デモモード";
+      footer.appendChild(strong);
+    }
+
+    function setActiveBtn(mode) {
+      document.querySelectorAll(".demo-btn").forEach(function(btn) {
+        btn.classList.toggle("active", btn.dataset.mode === (mode || "normal"));
+      });
+    }
+
+    function applyDemoMode(mode) {
+      demoMode = mode;
+      setActiveBtn(mode);
+      if (demoMode) {
+        renderDemo(demoMode);
+      } else {
+        loadData();
+      }
+    }
+
+    document.querySelectorAll(".demo-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        applyDemoMode(btn.dataset.mode === "normal" ? null : btn.dataset.mode);
+      });
+    });
+
     async function loadData() {
+      if (demoMode) return;
       if (!BASE || !KEY) return;
       try {
         const res = await fetch(
@@ -287,7 +377,12 @@
       }
     }
 
-    loadData();
+    const demoParam = new URLSearchParams(window.location.search).get("demo");
+    if (demoParam && DEMO_DATA[demoParam]) {
+      applyDemoMode(demoParam);
+    } else {
+      loadData();
+    }
     setInterval(loadData, 10_000);
   </script>
 </body>
