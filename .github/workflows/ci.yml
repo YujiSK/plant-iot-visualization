@@ -13,4 +13,31 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validate docs/index.html
-        run: npx --yes html-validate docs/index.html
+        run: npx --yes html-validate@8 docs/index.html
+
+      - name: Validate JavaScript syntax
+        run: node --check docs/config.js
+
+      - name: Run static asset checks
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          docs_html = Path('docs/index.html').read_text(encoding='utf-8')
+          docs_config = Path('docs/config.js').read_text(encoding='utf-8')
+
+          checks = [
+              ('docs/index.html references config.js', 'config.js' in docs_html),
+              ('docs/config.js defines PLANT_CONFIG', 'window.PLANT_CONFIG' in docs_config),
+              ('docs/index.html has no placeholder Supabase URL', 'REPLACE_WITH_YOUR_PROJECT' not in docs_html),
+              ('docs/index.html has no placeholder Supabase key', 'REPLACE_WITH_YOUR_PUBLISHABLE_KEY' not in docs_html),
+          ]
+
+          failed = False
+          for label, ok in checks:
+              print(f"{label}: {'OK' if ok else 'FAIL'}")
+              failed = failed or not ok
+
+          if failed:
+              raise SystemExit(1)
+          PY
