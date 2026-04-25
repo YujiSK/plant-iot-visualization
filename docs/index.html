@@ -211,10 +211,10 @@
   </main>
 
   <div id="demo-bar" class="demo-bar" role="group" aria-label="表示モード切替">
-    <button type="button" data-mode="normal" class="demo-btn active">通常</button>
-    <button type="button" data-mode="good" class="demo-btn">良好</button>
-    <button type="button" data-mode="warning" class="demo-btn">注意</button>
-    <button type="button" data-mode="danger" class="demo-btn">要対応</button>
+    <button type="button" data-mode="normal" class="demo-btn active" aria-pressed="true">通常</button>
+    <button type="button" data-mode="good" class="demo-btn" aria-pressed="false">良好</button>
+    <button type="button" data-mode="warning" class="demo-btn" aria-pressed="false">注意</button>
+    <button type="button" data-mode="danger" class="demo-btn" aria-pressed="false">要対応</button>
   </div>
 
   <footer id="footer" class="footer"></footer>
@@ -234,15 +234,15 @@
 
     const DEMO_DATA = {
       good: {
-        temperature: 26.0, humidity: 50.0, pressure: 1013,
+        temperature: 26.0, humidity: 50.0,
         vitality_score: 92, message: "安定しています",
       },
       warning: {
-        temperature: 30.5, humidity: 38.0, pressure: 1013,
+        temperature: 30.5, humidity: 38.0,
         vitality_score: 68, message: "やや注意が必要です",
       },
       danger: {
-        temperature: 36.0, humidity: 28.0, pressure: 1013,
+        temperature: 36.0, humidity: 28.0,
         vitality_score: 40, message: "乾燥しています",
       },
     };
@@ -337,17 +337,24 @@
 
     function setActiveBtn(mode) {
       document.querySelectorAll(".demo-btn").forEach(function(btn) {
-        btn.classList.toggle("active", btn.dataset.mode === (mode || "normal"));
+        const isActive = btn.dataset.mode === (mode || "normal");
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
       });
     }
+
+    let liveInterval = null;
 
     function applyDemoMode(mode) {
       demoMode = mode;
       setActiveBtn(mode);
       if (demoMode) {
+        clearInterval(liveInterval);
+        liveInterval = null;
         renderDemo(demoMode);
       } else {
         loadData();
+        liveInterval = setInterval(loadData, 10_000);
       }
     }
 
@@ -378,12 +385,12 @@
     }
 
     const demoParam = new URLSearchParams(window.location.search).get("demo");
-    if (demoParam && DEMO_DATA[demoParam]) {
+    if (demoParam && Object.hasOwn(DEMO_DATA, demoParam)) {
       applyDemoMode(demoParam);
     } else {
       loadData();
+      liveInterval = setInterval(loadData, 10_000);
     }
-    setInterval(loadData, 10_000);
   </script>
 </body>
 </html>
