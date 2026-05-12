@@ -12,6 +12,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/sensor_logs" if SUPABASE_URL else ""
 LED_HOLD_SECONDS = float(os.getenv("LED_HOLD_SECONDS", "2"))
+# Sense HAT temperature tends to be affected by Raspberry Pi board heat.
+# Apply a configurable offset to approximate ambient temperature.
+TEMP_OFFSET = float(os.getenv("TEMP_OFFSET", "-8.0"))
 
 def get_interval_seconds():
     """Read sensor interval from env and fall back to 300 seconds."""
@@ -92,7 +95,8 @@ def show_led_status(sense, vitality_score):
     sense.clear()
 
 while True:
-    temperature = round(sense.get_temperature(), 2)
+    raw_temperature = round(sense.get_temperature(), 2)
+    temperature = round(raw_temperature + TEMP_OFFSET, 2)
     humidity = round(sense.get_humidity(), 2)
     pressure = round(sense.get_pressure(), 2)
     
@@ -120,7 +124,7 @@ while True:
     try:
         r = requests.post(URL, json=data, timeout=5)
         print(
-            f"sent: temp={temperature}, humidity={humidity}, vitality={vitality_score}, status={r.status_code}",
+            f"sent: raw_temp={raw_temperature}, corrected_temp={temperature}, humidity={humidity}, vitality={vitality_score}, status={r.status_code}",
             flush=True,
         )
 
