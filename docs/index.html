@@ -256,8 +256,8 @@
     }
 
     function toJst(utcStr) {
-      const d = new Date(new Date(utcStr).getTime() + 9 * 3600 * 1000);
-      return d.toLocaleString("ja-JP", { hour12: false });
+      const s = /Z|[+-]\d{2}:?\d{2}$/.test(utcStr) ? utcStr : utcStr + "Z";
+      return new Date(s).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", hour12: false });
     }
 
     function fmt(v, d = 1) {
