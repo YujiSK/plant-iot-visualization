@@ -313,14 +313,14 @@
             </div>
             <div class="sensor-label">湿度</div>
           </div>
-          <div class=sensor-tile>
-            <div class=sensor-value>
-              <span id=pressure-val></span><span class=sensor-unit>hPa</span>
+          <div class="sensor-tile pressure-tile">
+            <div class="sensor-value">
+              <span id="pressure-val"></span><span class="sensor-unit">hPa</span>
             </div>
-            <div class=sensor-label>気圧</div>
+            <div class="sensor-label">気圧</div>
           </div>
         </div>
-        <div class=message id=msg-box></div>
+        <div class="message" id="msg-box"></div>
       `;
 
       document.getElementById("score-num").textContent    = score;
@@ -328,7 +328,7 @@
       document.getElementById("temp-val").textContent     = fmt(d.temperature);
       document.getElementById("hum-val").textContent      = fmt(d.humidity);
       document.getElementById("msg-box").textContent      = d.message || "状態不明";
-      document.getElementById(String.fromCharCode(112,114,101,115,115,117,114,101,45,118,97,108)).textContent = fmt(d.pressure);
+      document.getElementById("pressure-val").textContent = fmt(d.pressure);
 
       const footer = document.getElementById("footer");
       const strong = document.createElement("strong");
