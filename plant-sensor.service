@@ -9,6 +9,7 @@ WorkingDirectory=/home/pi/plant-iot
 EnvironmentFile=/home/pi/plant-iot/.env
 Environment="PATH=/home/pi/plant-iot/.venv/bin"
 ExecStart=/home/pi/plant-iot/.venv/bin/python /home/pi/plant-iot/send_sensor.py
+ExecReload=/bin/kill -USR1 $MAINPID
 Restart=always
 RestartSec=5
 

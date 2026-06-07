@@ -9,8 +9,11 @@ Current hardware:
 """
 
 import os
+import signal
 import statistics
+import threading
 import time
+from datetime import datetime, timezone
 
 import adafruit_dht
 import board
@@ -21,6 +24,7 @@ from dotenv import load_dotenv
 from vitality import calculate_vitality, generate_message
 
 URL = "http://localhost:8000/sensor"
+LATEST_URL = "http://localhost:8000/latest"
 VREF = 3.3
 ADC_MAX = 4095
 
@@ -37,6 +41,8 @@ ADC_DEVICE = int(os.getenv("ADC_DEVICE", "0"))
 ADC_MAX_SPEED_HZ = int(os.getenv("ADC_MAX_SPEED_HZ", "1000000"))
 ADC_SAMPLES = int(os.getenv("ADC_SAMPLES", "5"))
 ADC_SAMPLE_DELAY_SECONDS = float(os.getenv("ADC_SAMPLE_DELAY_SECONDS", "0.05"))
+MANUAL_SEND_MIN_INTERVAL_SECONDS = int(os.getenv("MANUAL_SEND_MIN_INTERVAL_SECONDS", "60"))
+manual_send_requested = threading.Event()
 
 
 def get_interval_seconds():
@@ -52,6 +58,11 @@ def get_interval_seconds():
 
 
 SENSOR_INTERVAL_SECONDS = get_interval_seconds()
+
+
+def request_manual_send(signum, frame):
+    print("manual send requested", flush=True)
+    manual_send_requested.set()
 
 
 def read_mcp320x(spi, channel):
@@ -213,23 +224,130 @@ def run_once(dht, spi):
         flush=True,
     )
     send_to_supabase(supabase_payload)
+    return True
+
+
+def should_skip_manual_send(last_sent_at):
+    if not last_sent_at:
+        return False
+
+    elapsed = time.monotonic() - last_sent_at
+    if elapsed < max(0, MANUAL_SEND_MIN_INTERVAL_SECONDS):
+        print(
+            "manual send skipped: "
+            f"last send was {elapsed:.1f}s ago "
+            f"(minimum {MANUAL_SEND_MIN_INTERVAL_SECONDS}s)",
+            flush=True,
+        )
+        return True
+    return False
+
+
+def should_skip_regular_send(last_sent_at):
+    if not last_sent_at:
+        return False
+
+    elapsed = time.monotonic() - last_sent_at
+    if elapsed < max(0, MANUAL_SEND_MIN_INTERVAL_SECONDS):
+        print(
+            "regular send skipped: "
+            f"last send was {elapsed:.1f}s ago "
+            f"(minimum {MANUAL_SEND_MIN_INTERVAL_SECONDS}s)",
+            flush=True,
+        )
+        return True
+    return False
+
+
+def seconds_until_next_regular_send():
+    remainder = time.time() % SENSOR_INTERVAL_SECONDS
+    if remainder < 0.001:
+        return 0
+    return SENSOR_INTERVAL_SECONDS - remainder
+
+
+def parse_sqlite_utc(value):
+    if not value:
+        return None
+
+    try:
+        normalized = str(value).replace("Z", "+00:00")
+        if "+" in normalized or normalized.endswith("+00:00"):
+            parsed = datetime.fromisoformat(normalized)
+        else:
+            parsed = datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
+def last_local_send_age_seconds():
+    try:
+        response = requests.get(LATEST_URL, timeout=5)
+        if not response.ok:
+            return None
+        latest = response.json()
+    except Exception as exc:
+        print(f"latest check failed: {exc}", flush=True)
+        return None
+
+    created_at = parse_sqlite_utc(latest.get("created_at"))
+    if created_at is None:
+        return None
+
+    age = (datetime.now(timezone.utc) - created_at).total_seconds()
+    return max(0, age)
+
+
+def initial_last_sent_at():
+    age = last_local_send_age_seconds()
+    if age is None or age >= SENSOR_INTERVAL_SECONDS:
+        return None
+
+    print(
+        "latest local row found: "
+        f"latest local row is {age:.1f}s old "
+        f"(interval {SENSOR_INTERVAL_SECONDS}s)",
+        flush=True,
+    )
+    return time.monotonic() - age
 
 
 def main():
+    signal.signal(signal.SIGUSR1, request_manual_send)
+
     dht = adafruit_dht.DHT11(board.D4)
     spi = spidev.SpiDev()
     spi.open(ADC_BUS, ADC_DEVICE)
     spi.max_speed_hz = ADC_MAX_SPEED_HZ
     spi.mode = 0
+    last_sent_at = initial_last_sent_at()
 
     try:
+        print(
+            "next regular send in "
+            f"{seconds_until_next_regular_send():.1f}s",
+            flush=True,
+        )
+        manual_send_requested.wait(seconds_until_next_regular_send())
+
         while True:
+            if manual_send_requested.is_set():
+                manual_send_requested.clear()
+                if should_skip_manual_send(last_sent_at):
+                    manual_send_requested.wait(seconds_until_next_regular_send())
+                    continue
+
             try:
-                run_once(dht, spi)
+                if should_skip_regular_send(last_sent_at):
+                    pass
+                elif run_once(dht, spi):
+                    last_sent_at = time.monotonic()
             except Exception as exc:
                 print("error:", exc, flush=True)
 
-            time.sleep(SENSOR_INTERVAL_SECONDS)
+            manual_send_requested.wait(seconds_until_next_regular_send())
     finally:
         try:
             dht.exit()

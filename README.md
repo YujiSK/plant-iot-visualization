@@ -39,7 +39,7 @@ SUPABASE_KEY=your-publishable-key
 SUPABASE_SENSOR_KEY=your-private-service-role-or-sensor-write-key
 SENSOR_INTERVAL_SECONDS=300
 DHT_RETRIES=8
-LED_HOLD_SECONDS=2
+MANUAL_SEND_MIN_INTERVAL_SECONDS=60
 ```
 
 `TEMP_OFFSET` and `HUMIDITY_OFFSET` were for the old Sense HAT prototype. The
@@ -57,6 +57,20 @@ python scripts/generate_pages_config.py
 uvicorn main:app --host 0.0.0.0 --port 8000
 python send_sensor.py
 ```
+
+Trigger one manual reading without restarting the service:
+
+```bash
+sudo systemctl reload plant-sensor.service
+journalctl -u plant-sensor.service -n 30 --no-pager -l
+```
+
+Manual reload requests are skipped when the previous successful send was less
+than `MANUAL_SEND_MIN_INTERVAL_SECONDS` seconds ago, to avoid accidental
+duplicate rows.
+
+Regular sends are aligned to wall-clock interval boundaries. With the default
+`SENSOR_INTERVAL_SECONDS=300`, readings run at 00, 05, 10, 15, ... minutes.
 
 ## Sensor fields
 

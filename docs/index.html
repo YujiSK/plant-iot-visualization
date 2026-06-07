@@ -140,6 +140,30 @@
       opacity: 0.92;
     }
 
+    .advice-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    .advice-item {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: clamp(12px, 3.5vw, 14px);
+      line-height: 1.5;
+    }
+
+    .advice-label {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      opacity: 0.62;
+    }
+
     /* ── Loading / error ── */
     .state-msg {
       font-size: clamp(17px, 5vw, 22px);
@@ -247,19 +271,25 @@
       good: {
         temperature: 26.0, humidity: 50.0,
         water_raw: 2100, water_status: "enough_water",
+        water_voltage: 1.692,
         light_raw: 1600, light_status: "bright",
+        light_voltage: 1.289,
         vitality_score: 92, message: "安定しています",
       },
       warning: {
         temperature: 30.5, humidity: 38.0,
         water_raw: 900, water_status: "wet",
+        water_voltage: 0.725,
         light_raw: 850, light_status: "dim",
+        light_voltage: 0.685,
         vitality_score: 68, message: "やや注意が必要です",
       },
       danger: {
         temperature: 36.0, humidity: 28.0,
         water_raw: 0, water_status: "dry",
+        water_voltage: 0.0,
         light_raw: 300, light_status: "dark",
+        light_voltage: 0.242,
         vitality_score: 40, message: "乾燥しています",
       },
     };
@@ -300,6 +330,73 @@
         },
       };
       return labels[kind]?.[value] || "不明";
+    }
+
+    function adviceForTemperature(value) {
+      if (value == null) return null;
+      if (value >= 30) return ["温度", "高温です。直射日光やLEDの照射距離を確認してください。"];
+      if (value >= 25) return ["温度", "適温範囲です。現在の環境は安定しています。"];
+      if (value >= 15) return ["温度", "やや低温ですが問題ありません。生育速度が少し低下する場合があります。"];
+      return ["温度", "低温です。植物によっては成長が鈍化する可能性があります。"];
+    }
+
+    function adviceForHumidity(value) {
+      if (value == null) return null;
+      if (value >= 80) return ["湿度", "湿度が高めです。カビや病害発生に注意してください。"];
+      if (value >= 50) return ["湿度", "適正範囲です。植物にとって比較的良好な環境です。"];
+      if (value >= 40) return ["湿度", "やや乾燥しています。植物の状態を確認してください。"];
+      return ["湿度", "乾燥しています。葉のしおれや蒸散増加に注意してください。"];
+    }
+
+    function adviceForWater(d) {
+      if (d.water_status === "dry") return ["水位", "水不足が検出されています。補水してください。"];
+      if (d.water_raw == null) return null;
+      if (d.water_raw >= 2500) return ["水位", "水位は十分あります。"];
+      if (d.water_raw >= 1500) return ["水位", "水位は正常です。"];
+      if (d.water_raw >= 1000) return ["水位", "水位が低下しています。補水を検討してください。"];
+      return ["水位", "水不足の可能性があります。早めの補水を推奨します。"];
+    }
+
+    function adviceForLight(d) {
+      if (d.light_status === "dim") return ["照度", "光量不足の可能性があります。照明や設置場所を確認してください。"];
+      if (d.light_raw == null) return null;
+      if (d.light_raw >= 3000) return ["照度", "十分な光量です。"];
+      if (d.light_raw >= 2000) return ["照度", "おおむね良好です。"];
+      if (d.light_raw >= 1000) return ["照度", "光量が不足気味です。設置場所や照明を確認してください。"];
+      return ["照度", "光量不足です。生育に影響する可能性があります。"];
+    }
+
+    function totalAdvice(score) {
+      if (score >= 90) return "非常に良好です。植物は健康な状態です。";
+      if (score >= 70) return "安定しています。現在の環境を維持してください。";
+      if (score >= 50) return "注意が必要です。一部の環境条件を確認してください。";
+      if (score >= 30) return "植物にストレスが発生している可能性があります。";
+      return "要対応です。給水や設置環境を確認してください。";
+    }
+
+    function inferredAdvice(d) {
+      const score = d.vitality_score ?? 0;
+      if ((d.water_status === "wet" || d.water_status === "enough_water") && score < 50) {
+        return ["原因推定", "貯水部には水がありますが、植物保持材や根まで水が届いていない可能性があります。"];
+      }
+      if (d.temperature >= 30 && d.light_status === "bright") {
+        return ["原因推定", "高温・強光ストレスの可能性があります。LED距離や設置場所を確認してください。"];
+      }
+      if ((d.water_status === "wet" || d.water_status === "enough_water") && score >= 70) {
+        return ["原因推定", "貯水部・環境値は安定しています。大きな異常は検出されていません。"];
+      }
+      return null;
+    }
+
+    function generateAdvice(d) {
+      const items = [
+        inferredAdvice(d),
+        adviceForTemperature(d.temperature),
+        adviceForHumidity(d.humidity),
+        adviceForWater(d),
+        adviceForLight(d),
+      ].filter(Boolean);
+      return items.slice(0, 3);
     }
 
     function setBackground(t) {
@@ -359,17 +456,31 @@
           </div>
         </div>
         <div class="message" id="msg-box"></div>
+        <div class="advice-list" id="advice-list"></div>
       `;
 
       document.getElementById("score-num").textContent    = score;
       document.getElementById("status-label").textContent = t.label;
       document.getElementById("temp-val").textContent     = fmt(d.temperature);
       document.getElementById("hum-val").textContent      = fmt(d.humidity);
-      document.getElementById("msg-box").textContent      = d.message || "状態不明";
+      document.getElementById("msg-box").textContent      = totalAdvice(score);
       document.getElementById("water-status").textContent = sensorStatusLabel("water", d.water_status);
       document.getElementById("water-raw").textContent    = fmtRaw(d.water_raw);
       document.getElementById("light-status").textContent = sensorStatusLabel("light", d.light_status);
       document.getElementById("light-raw").textContent    = fmtRaw(d.light_raw);
+
+      const adviceList = document.getElementById("advice-list");
+      adviceList.innerHTML = "";
+      generateAdvice(d).forEach(function(item) {
+        const box = document.createElement("div");
+        box.className = "advice-item";
+        const label = document.createElement("span");
+        label.className = "advice-label";
+        label.textContent = item[0];
+        const text = document.createTextNode(item[1]);
+        box.append(label, text);
+        adviceList.appendChild(box);
+      });
 
       const footer = document.getElementById("footer");
       const strong = document.createElement("strong");
@@ -422,7 +533,7 @@
       try {
         const res = await fetch(
           `${BASE}/rest/v1/sensor_logs` +
-          `?select=temperature,humidity,water_raw,water_status,light_raw,light_status,vitality_score,message,created_at` +
+          `?select=temperature,humidity,water_raw,water_voltage,water_status,light_raw,light_voltage,light_status,vitality_score,message,created_at` +
           `&order=created_at.desc&limit=1`,
           { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
         );

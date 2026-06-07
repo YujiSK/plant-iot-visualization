@@ -166,3 +166,28 @@
 - `/etc/systemd/system/plant-sensor.service` にリポジトリ内のservice定義を反映し、`daemon-reload` 済み。
 - `systemctl status plant-sensor.service --no-pager -l` で表示名が `Plant IoT DHT11 and ADC Sensor Sender` になったことを確認した。
 - `journalctl -u plant-sensor.service -n 20 --no-pager -l` でローカルAPI `status=200`、Supabase `201` の送信継続を確認した。
+
+### 再起動なしの手動送信
+
+#### 変更したこと
+
+- `send_sensor.py` が `SIGUSR1` を受けたら待機を中断し、手動送信を試行するようにした。
+- `plant-sensor.service` に `ExecReload=/bin/kill -USR1 $MAINPID` を追加し、`sudo systemctl reload plant-sensor.service` で手動送信できるようにした。
+- 直近送信から `MANUAL_SEND_MIN_INTERVAL_SECONDS` 秒以内の手動送信はスキップし、誤操作による重複行を避けるようにした。
+- 通常送信は前回送信からの相対間隔ではなく、`SENSOR_INTERVAL_SECONDS=300` の場合に 00/05/10/15/... 分へ揃うようにした。
+- 手動送信直後など、通常送信境界で直近送信から `MANUAL_SEND_MIN_INTERVAL_SECONDS` 秒以内の場合は通常送信もスキップするようにした。
+
+#### 注意点
+
+- `plant-sensor.service` の `ExecReload` 追加は `/etc/systemd/system/plant-sensor.service` へ反映し、`daemon-reload` 済み。
+- 時刻境界揃えの変更を常駐プロセスへ読み込ませるため、ユーザーが `sudo systemctl restart plant-sensor.service` を実行済み。
+- `journalctl -u plant-sensor.service -n 30 --no-pager -l` で `next regular send in 251.9s` を確認し、08:05:00 付近の次回送信待ちになっていることを確認した。
+
+### GitHub Pages アドバイス表示
+
+#### 変更したこと
+
+- `docs/index.html` に総合アドバイスとセンサー別アドバイスを追加した。
+- 温度、湿度、水位ADC、水位状態、照度ADC、照度状態、`vitality_score` に基づくコメントを生成するようにした。
+- 表示は情報過多を避けるため、総合メッセージ1件と詳細アドバイス最大3件に制限した。
+- Supabase取得対象に `water_voltage` / `light_voltage` も含め、今後の表示拡張に備えた。
