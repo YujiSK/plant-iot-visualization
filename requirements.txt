@@ -1,0 +1,8 @@
+fastapi==0.136.1
+adafruit-circuitpython-dht==4.0.12
+gpiod==2.2.0
+lgpio==0.2.2.0
+python-dotenv==1.0.1
+requests==2.32.3
+spidev==3.6
+uvicorn==0.46.0

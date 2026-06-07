@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,12 +26,14 @@ def main() -> None:
     if not supabase_url or not supabase_key:
         raise SystemExit("SUPABASE_URL and SUPABASE_KEY must be set in .env")
 
+    config = {
+        "SUPABASE_URL": supabase_url,
+        "SUPABASE_KEY": supabase_key,
+    }
     DOCS_CONFIG_PATH.write_text(
         "window.PLANT_CONFIG = "
-        + "{\n"
-        + f'  SUPABASE_URL: "{supabase_url}",\n'
-        + f'  SUPABASE_KEY: "{supabase_key}"\n'
-        + "};\n",
+        + json.dumps(config, ensure_ascii=True, indent=2)
+        + ";\n",
         encoding="utf-8",
     )
 

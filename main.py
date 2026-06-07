@@ -1,87 +1,106 @@
+import sqlite3
+from typing import Optional
+
 from fastapi import FastAPI
 from pydantic import BaseModel
-import sqlite3
+
+from vitality import calculate_vitality, generate_message
 
 app = FastAPI()
+DB_PATH = "data.db"
 
-conn = sqlite3.connect("data.db", check_same_thread=False)
-cursor = conn.cursor()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS sensor_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    temperature REAL,
-    humidity REAL,
-    pressure REAL,
-    vitality_score INTEGER,
-    message TEXT,
-    source TEXT DEFAULT 'sensor',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-)
-""")
-conn.commit()
+def get_connection():
+    return sqlite3.connect(DB_PATH)
 
-# Helper functions for vitality calculation
-def score_temp(temperature):
-    """Temperature score: optimal 24-28, acceptable 20-30, poor otherwise"""
-    if 24 <= temperature <= 28:
-        return 100
-    elif 20 <= temperature <= 30:
-        return 70
-    else:
-        return 40
 
-def score_humidity(humidity):
-    """Humidity score: optimal 40-60, acceptable 35-70, poor otherwise"""
-    if 40 <= humidity <= 60:
-        return 100
-    elif 35 <= humidity <= 70:
-        return 70
-    else:
-        return 40
+def init_db():
+    with get_connection() as conn:
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS sensor_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            temperature REAL,
+            humidity REAL,
+            pressure REAL,
+            vitality_score INTEGER,
+            message TEXT,
+            source TEXT DEFAULT 'sensor',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        existing_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(sensor_logs)").fetchall()
+        }
+        migrations = {
+            "water_raw": "ALTER TABLE sensor_logs ADD COLUMN water_raw INTEGER",
+            "water_voltage": "ALTER TABLE sensor_logs ADD COLUMN water_voltage REAL",
+            "water_status": "ALTER TABLE sensor_logs ADD COLUMN water_status TEXT",
+            "light_raw": "ALTER TABLE sensor_logs ADD COLUMN light_raw INTEGER",
+            "light_voltage": "ALTER TABLE sensor_logs ADD COLUMN light_voltage REAL",
+            "light_status": "ALTER TABLE sensor_logs ADD COLUMN light_status TEXT",
+        }
+        for column, statement in migrations.items():
+            if column not in existing_columns:
+                conn.execute(statement)
 
-def calculate_vitality(temperature, humidity):
-    """Calculate vitality score: temp*0.6 + humidity*0.4"""
-    return int(score_temp(temperature) * 0.6 + score_humidity(humidity) * 0.4)
 
-def generate_message(temperature, humidity):
-    """Generate status message based on conditions"""
-    if humidity < 35:
-        return "乾燥しています"
-    elif temperature > 30:
-        return "温度が高めです"
-    else:
-        return "安定しています"
+init_db()
+
 
 class SensorData(BaseModel):
     temperature: float
     humidity: float
-    pressure: float
+    pressure: Optional[float] = None
     source: str = "sensor"
+    water_raw: Optional[int] = None
+    water_voltage: Optional[float] = None
+    water_status: Optional[str] = None
+    light_raw: Optional[int] = None
+    light_voltage: Optional[float] = None
+    light_status: Optional[str] = None
+
 
 @app.post("/sensor")
 def receive_sensor(data: SensorData):
     vitality_score = calculate_vitality(data.temperature, data.humidity)
     message = generate_message(data.temperature, data.humidity)
-    
-    cursor.execute(
-        """INSERT INTO sensor_logs 
-           (temperature, humidity, pressure, vitality_score, message, source) 
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (data.temperature, data.humidity, data.pressure, vitality_score, message, data.source)
-    )
-    conn.commit()
+
+    with get_connection() as conn:
+        conn.execute(
+            """INSERT INTO sensor_logs
+               (temperature, humidity, pressure, vitality_score, message, source,
+                water_raw, water_voltage, water_status,
+                light_raw, light_voltage, light_status)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                data.temperature,
+                data.humidity,
+                data.pressure,
+                vitality_score,
+                message,
+                data.source,
+                data.water_raw,
+                data.water_voltage,
+                data.water_status,
+                data.light_raw,
+                data.light_voltage,
+                data.light_status,
+            ),
+        )
     return {"status": "ok"}
+
 
 @app.get("/latest")
 def get_latest():
-    cursor.execute("""
-        SELECT id, temperature, humidity, pressure, created_at, vitality_score, message, source
-        FROM sensor_logs
-        ORDER BY id DESC
-        LIMIT 1
-    """)
-    row = cursor.fetchone()
+    with get_connection() as conn:
+        row = conn.execute("""
+            SELECT id, temperature, humidity, pressure, created_at, vitality_score, message, source,
+                   water_raw, water_voltage, water_status,
+                   light_raw, light_voltage, light_status
+            FROM sensor_logs
+            ORDER BY id DESC
+            LIMIT 1
+        """).fetchone()
 
     if row is None:
         return {"message": "no data"}
@@ -94,5 +113,11 @@ def get_latest():
         "created_at": row[4],
         "vitality_score": row[5],
         "message": row[6],
-        "source": row[7]
+        "source": row[7],
+        "water_raw": row[8],
+        "water_voltage": row[9],
+        "water_status": row[10],
+        "light_raw": row[11],
+        "light_voltage": row[12],
+        "light_status": row[13],
     }

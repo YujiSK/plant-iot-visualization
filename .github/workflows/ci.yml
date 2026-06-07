@@ -6,6 +6,22 @@ on:
   pull_request:
 
 jobs:
+  test-python:
+    name: Test Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate Python syntax
+        run: python -m py_compile main.py send_sensor.py scripts/generate_pages_config.py vitality.py test_vitality.py
+
+      - name: Run unit tests
+        run: python -m unittest discover -v
+
   validate-html:
     name: Validate HTML
     runs-on: ubuntu-latest
