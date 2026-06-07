@@ -26,18 +26,42 @@
       -webkit-font-smoothing: antialiased;
     }
 
+    .dashboard {
+      width: min(860px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 400px);
+      gap: 16px;
+      justify-content: center;
+      align-items: start;
+    }
+
+    @media (min-width: 860px) {
+      .dashboard {
+        grid-template-columns: minmax(0, 400px) minmax(320px, 400px);
+      }
+    }
+
     /* ── Glass card ── */
-    .card {
-      width: min(400px, 100%);
+    .card,
+    .doctor-card {
+      width: 100%;
       background: rgba(255, 255, 255, 0.13);
       backdrop-filter: blur(28px);
       -webkit-backdrop-filter: blur(28px);
       border: 1px solid rgba(255, 255, 255, 0.22);
       border-radius: 28px;
-      padding: 32px 24px 28px;
       color: #fff;
       box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+    }
+
+    .card {
+      padding: 32px 24px 28px;
       text-align: center;
+    }
+
+    .doctor-card {
+      padding: 26px 22px 24px;
+      text-align: left;
     }
 
     .plant-title {
@@ -164,6 +188,96 @@
       opacity: 0.62;
     }
 
+    /* ── Plant Doctor ── */
+    .doctor-title {
+      font-size: clamp(17px, 4vw, 20px);
+      font-weight: 800;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+
+    .doctor-section {
+      padding: 14px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .doctor-section:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .doctor-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      opacity: 0.74;
+    }
+
+    .level-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      flex: 0 0 auto;
+    }
+
+    .level-dot.good { background: #86efac; }
+    .level-dot.warning { background: #facc15; }
+    .level-dot.danger { background: #f87171; }
+
+    .doctor-summary {
+      font-size: clamp(14px, 3.7vw, 16px);
+      font-weight: 650;
+      line-height: 1.55;
+    }
+
+    .doctor-list {
+      display: grid;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .doctor-row {
+      display: grid;
+      gap: 4px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      line-height: 1.45;
+    }
+
+    .doctor-row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .doctor-value {
+      opacity: 0.72;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .doctor-comment,
+    .doctor-action {
+      font-size: 13px;
+      line-height: 1.5;
+      opacity: 0.86;
+    }
+
+    .confidence {
+      font-size: 12px;
+      opacity: 0.66;
+      white-space: nowrap;
+    }
+
     /* ── Loading / error ── */
     .state-msg {
       font-size: clamp(17px, 5vw, 22px);
@@ -238,12 +352,19 @@
 </head>
 <body>
 
-  <main id="card" class="card" aria-live="polite">
-    <h1 class="plant-title">🌿 バジルの状態</h1>
-    <div class="state-msg">
-      <span class="spinner"></span>読み込み中…
-    </div>
-  </main>
+  <div class="dashboard">
+    <main id="card" class="card" aria-live="polite">
+      <h1 class="plant-title">🌿 バジルの状態</h1>
+      <div class="state-msg">
+        <span class="spinner"></span>読み込み中…
+      </div>
+    </main>
+
+    <aside id="doctor-card" class="doctor-card" aria-live="polite">
+      <div class="doctor-title">Plant Doctor</div>
+      <div class="state-msg">診断待機中…</div>
+    </aside>
+  </div>
 
   <div id="demo-bar" class="demo-bar" role="group" aria-label="表示モード切替">
     <button type="button" data-mode="normal" class="demo-btn active" aria-pressed="true">通常</button>
@@ -332,71 +453,191 @@
       return labels[kind]?.[value] || "不明";
     }
 
-    function adviceForTemperature(value) {
-      if (value == null) return null;
-      if (value >= 30) return ["温度", "高温です。直射日光やLEDの照射距離を確認してください。"];
-      if (value >= 25) return ["温度", "適温範囲です。現在の環境は安定しています。"];
-      if (value >= 15) return ["温度", "やや低温ですが問題ありません。生育速度が少し低下する場合があります。"];
-      return ["温度", "低温です。植物によっては成長が鈍化する可能性があります。"];
+    function normalizeData(data) {
+      return {
+        ...data,
+        water_raw: data.water_raw ?? data.water_level_raw,
+        water_voltage: data.water_voltage ?? data.water_level_voltage,
+        source: data.source ?? data.sensor_type,
+      };
     }
 
-    function adviceForHumidity(value) {
-      if (value == null) return null;
-      if (value >= 80) return ["湿度", "湿度が高めです。カビや病害発生に注意してください。"];
-      if (value >= 50) return ["湿度", "適正範囲です。植物にとって比較的良好な環境です。"];
-      if (value >= 40) return ["湿度", "やや乾燥しています。植物の状態を確認してください。"];
-      return ["湿度", "乾燥しています。葉のしおれや蒸散増加に注意してください。"];
+    function waterRawLabel(raw) {
+      if (raw == null) return "未取得";
+      if (raw >= 2500) return "十分";
+      if (raw >= 1500) return "湿り";
+      if (raw >= 1000) return "境界";
+      return "乾燥";
     }
 
-    function adviceForWater(d) {
-      if (d.water_status === "dry") return ["水位", "水不足が検出されています。補水してください。"];
-      if (d.water_raw == null) return null;
-      if (d.water_raw >= 2500) return ["水位", "水位は十分あります。"];
-      if (d.water_raw >= 1500) return ["水位", "水位は正常です。"];
-      if (d.water_raw >= 1000) return ["水位", "水位が低下しています。補水を検討してください。"];
-      return ["水位", "水不足の可能性があります。早めの補水を推奨します。"];
+    function lightRawLabel(raw) {
+      if (raw == null) return "未取得";
+      if (raw >= 3000) return "十分";
+      if (raw >= 2000) return "明るい";
+      if (raw >= 1000) return "やや暗い";
+      return "暗い";
     }
 
-    function adviceForLight(d) {
-      if (d.light_status === "dim") return ["照度", "光量不足の可能性があります。照明や設置場所を確認してください。"];
-      if (d.light_raw == null) return null;
-      if (d.light_raw >= 3000) return ["照度", "十分な光量です。"];
-      if (d.light_raw >= 2000) return ["照度", "おおむね良好です。"];
-      if (d.light_raw >= 1000) return ["照度", "光量が不足気味です。設置場所や照明を確認してください。"];
-      return ["照度", "光量不足です。生育に影響する可能性があります。"];
+    function vitalitySummary(score) {
+      if (score >= 90) return ["good", "非常に良好です。植物は健康な状態です。"];
+      if (score >= 70) return ["good", "安定しています。現在の管理を継続してください。"];
+      if (score >= 50) return ["warning", "やや注意が必要です。温度・湿度・水位・照度を確認してください。"];
+      if (score >= 30) return ["warning", "植物にストレスがかかっている可能性があります。"];
+      return ["danger", "要対応です。給水・温度・光環境を確認してください。"];
     }
 
-    function totalAdvice(score) {
-      if (score >= 90) return "非常に良好です。植物は健康な状態です。";
-      if (score >= 70) return "安定しています。現在の環境を維持してください。";
-      if (score >= 50) return "注意が必要です。一部の環境条件を確認してください。";
-      if (score >= 30) return "植物にストレスが発生している可能性があります。";
-      return "要対応です。給水や設置環境を確認してください。";
+    function temperatureComment(value) {
+      if (value == null) return { level: "warning", comment: "温度は未取得です。" };
+      if (value >= 30) return { level: "warning", comment: "高温です。直射日光やLED距離を確認してください。" };
+      if (value >= 25) return { level: "good", comment: "適温範囲です。現在の温度は安定しています。" };
+      if (value >= 15) return { level: "good", comment: "やや低めですが、基本的には問題ありません。" };
+      return { level: "warning", comment: "低温です。生育が鈍化する可能性があります。" };
     }
 
-    function inferredAdvice(d) {
+    function humidityComment(value) {
+      if (value == null) return { level: "warning", comment: "湿度は未取得です。" };
+      if (value >= 80) return { level: "warning", comment: "湿度が高めです。カビや病害に注意してください。" };
+      if (value >= 50) return { level: "good", comment: "湿度は適正範囲です。" };
+      if (value >= 40) return { level: "warning", comment: "やや乾燥しています。植物の状態を確認してください。" };
+      return { level: "danger", comment: "乾燥しています。葉のしおれや蒸散増加に注意してください。" };
+    }
+
+    function waterComment(data) {
+      if (data.water_status === "dry") {
+        return { level: "danger", comment: "水不足が検出されています。補水してください。" };
+      }
+      if (data.water_status === "wet" || data.water_status === "enough_water") {
+        return { level: "good", comment: "水位は検出されています。" };
+      }
+      return { level: "warning", comment: "水位状態を確認してください。" };
+    }
+
+    function lightComment(data) {
+      if (data.light_status === "bright") {
+        return { level: "good", comment: "光量は十分です。" };
+      }
+      if (data.light_status === "dim") {
+        return { level: "warning", comment: "光量不足の可能性があります。照明や設置場所を確認してください。" };
+      }
+      if (data.light_status === "dark") {
+        return { level: "danger", comment: "光量不足です。生育に影響する可能性があります。" };
+      }
+      return { level: "warning", comment: "照度状態を確認してください。" };
+    }
+
+    function addCause(result, label, confidence, comment, actions) {
+      result.possibleCauses.push({ label, confidence, comment });
+      actions.forEach(function(action) {
+        if (!result.actions.includes(action)) result.actions.push(action);
+      });
+    }
+
+    function generateAdvice(data) {
+      const d = normalizeData(data);
       const score = d.vitality_score ?? 0;
-      if ((d.water_status === "wet" || d.water_status === "enough_water") && score < 50) {
-        return ["原因推定", "貯水部には水がありますが、植物保持材や根まで水が届いていない可能性があります。"];
+      const summary = vitalitySummary(score);
+      const temp = temperatureComment(d.temperature);
+      const humidity = humidityComment(d.humidity);
+      const water = waterComment(d);
+      const light = lightComment(d);
+      const result = {
+        status: summary[0],
+        summary: summary[1],
+        sensorComments: [
+          {
+            label: "温度",
+            value: `${fmt(d.temperature)}℃`,
+            level: temp.level,
+            comment: temp.comment,
+          },
+          {
+            label: "湿度",
+            value: `${fmt(d.humidity)}%`,
+            level: humidity.level,
+            comment: humidity.comment,
+          },
+          {
+            label: "水位",
+            value: `${sensorStatusLabel("water", d.water_status)} / raw ${fmtRaw(d.water_raw)} / ${waterRawLabel(d.water_raw)}`,
+            level: water.level,
+            comment: water.comment,
+          },
+          {
+            label: "照度",
+            value: `${d.light_status || "不明"} / raw ${fmtRaw(d.light_raw)} / ${lightRawLabel(d.light_raw)}`,
+            level: light.level,
+            comment: light.comment,
+          },
+        ],
+        possibleCauses: [],
+        actions: [],
+      };
+
+      if (d.water_status === "wet" && score < 50) {
+        addCause(
+          result,
+          "給水経路異常",
+          85,
+          "貯水部には水がありますが、植物保持材や根まで水が届いていない可能性があります。フェルト・ろ過ウール・根の接触状態を確認してください。",
+          [
+            "フェルトが湿っているか確認してください。",
+            "ろ過ウール全体に水が広がっているか確認してください。",
+            "根がろ過ウールに接触しているか確認してください。",
+            "必要に応じて、ろ過ウールを直接湿らせてください。",
+          ]
+        );
       }
       if (d.temperature >= 30 && d.light_status === "bright") {
-        return ["原因推定", "高温・強光ストレスの可能性があります。LED距離や設置場所を確認してください。"];
+        addCause(
+          result,
+          "高温・強光ストレス",
+          70,
+          "高温かつ強光のため、葉のしおれや蒸散増加が起きる可能性があります。",
+          ["LEDとの距離を広げてください。", "一時的に明るい日陰へ移動してください。", "ファンや換気を検討してください。"]
+        );
       }
-      if ((d.water_status === "wet" || d.water_status === "enough_water") && score >= 70) {
-        return ["原因推定", "貯水部・環境値は安定しています。大きな異常は検出されていません。"];
+      if (d.humidity < 40) {
+        addCause(
+          result,
+          "乾燥ストレス",
+          65,
+          "湿度が低く、植物の蒸散が増えている可能性があります。",
+          ["水位と保持材の湿りを確認してください。", "強光を一時的に避けてください。"]
+        );
       }
-      return null;
-    }
+      if (d.light_status === "dim" || d.light_status === "dark") {
+        addCause(
+          result,
+          "光量不足",
+          60,
+          "光量不足により、生育が弱くなる可能性があります。",
+          ["LED照明を近づける、または照射時間を見直してください。"]
+        );
+      }
+      if (
+        score >= 70 &&
+        (d.water_status === "wet" || d.water_status === "enough_water") &&
+        d.light_status === "bright" &&
+        d.temperature >= 15 &&
+        d.temperature < 30 &&
+        d.humidity >= 40 &&
+        d.humidity < 80
+      ) {
+        addCause(
+          result,
+          "安定状態",
+          90,
+          "現在の環境は安定しています。大きな異常は検出されていません。",
+          ["現在の管理を継続してください。", "定期的にろ過ウールと根の接触状態を確認してください。"]
+        );
+      }
 
-    function generateAdvice(d) {
-      const items = [
-        inferredAdvice(d),
-        adviceForTemperature(d.temperature),
-        adviceForHumidity(d.humidity),
-        adviceForWater(d),
-        adviceForLight(d),
-      ].filter(Boolean);
-      return items.slice(0, 3);
+      if (!result.actions.length) {
+        result.actions.push("センサー値の推移を確認してください。");
+      }
+      result.possibleCauses = result.possibleCauses.slice(0, 3);
+      result.actions = result.actions.slice(0, 3);
+      return result;
     }
 
     function setBackground(t) {
@@ -408,16 +649,96 @@
        to ensure future callers (e.g. error.message) cannot inject HTML. */
     function showState(msg) {
       const card = document.getElementById("card");
+      const doctor = document.getElementById("doctor-card");
       card.innerHTML =
         `<h1 class="plant-title">🌿 バジルの状態</h1>
          <div class="state-msg"></div>`;
       card.querySelector(".state-msg").textContent = msg;
+      doctor.innerHTML =
+        `<div class="doctor-title">Plant Doctor</div>
+         <div class="state-msg"></div>`;
+      doctor.querySelector(".state-msg").textContent = msg;
       document.getElementById("footer").innerHTML = "";
     }
 
+    function appendDoctorRow(list, headText, valueText, commentText, level) {
+      const row = document.createElement("li");
+      row.className = "doctor-row";
+      const head = document.createElement("div");
+      head.className = "doctor-row-head";
+      const left = document.createElement("span");
+      const dot = document.createElement("span");
+      dot.className = `level-dot ${level || ""}`;
+      left.append(dot, " ", headText);
+      const value = document.createElement("span");
+      value.className = "doctor-value";
+      value.textContent = valueText;
+      head.append(left, value);
+      const comment = document.createElement("div");
+      comment.className = "doctor-comment";
+      comment.textContent = commentText;
+      row.append(head, comment);
+      list.appendChild(row);
+    }
+
+    function appendSimpleRow(list, text, className = "doctor-action") {
+      const row = document.createElement("li");
+      row.className = "doctor-row";
+      const body = document.createElement("div");
+      body.className = className;
+      body.textContent = text;
+      row.appendChild(body);
+      list.appendChild(row);
+    }
+
+    function renderDoctor(d, advice) {
+      const doctor = document.getElementById("doctor-card");
+      doctor.innerHTML = `
+        <div class="doctor-title">Plant Doctor</div>
+        <section class="doctor-section">
+          <div class="doctor-heading"><span class="level-dot ${advice.status}"></span>総合判定</div>
+          <div class="doctor-summary" id="doctor-summary"></div>
+        </section>
+        <section class="doctor-section">
+          <div class="doctor-heading">センサー別分析</div>
+          <ul class="doctor-list" id="sensor-analysis"></ul>
+        </section>
+        <section class="doctor-section">
+          <div class="doctor-heading">推定原因</div>
+          <ul class="doctor-list" id="possible-causes"></ul>
+        </section>
+        <section class="doctor-section">
+          <div class="doctor-heading">推奨アクション</div>
+          <ul class="doctor-list" id="doctor-actions"></ul>
+        </section>
+      `;
+
+      document.getElementById("doctor-summary").textContent = advice.summary;
+
+      const sensorList = document.getElementById("sensor-analysis");
+      advice.sensorComments.forEach(function(item) {
+        appendDoctorRow(sensorList, item.label, item.value, item.comment, item.level);
+      });
+
+      const causes = document.getElementById("possible-causes");
+      advice.possibleCauses.forEach(function(item) {
+        appendDoctorRow(causes, item.label, `${item.confidence}%`, item.comment, advice.status);
+      });
+      if (!advice.possibleCauses.length) {
+        appendSimpleRow(causes, "明確な原因候補はありません。継続して推移を確認してください。", "doctor-comment");
+      }
+
+      const actions = document.getElementById("doctor-actions");
+      advice.actions.forEach(function(action) {
+        appendSimpleRow(actions, action);
+      });
+    }
+
     function render(d) {
+      d = normalizeData(d);
       const score = d.vitality_score ?? 0;
       const t     = theme(score);
+      const advice = generateAdvice(d);
       setBackground(t);
 
       /* Build static skeleton via innerHTML (no user data here),
@@ -456,31 +777,18 @@
           </div>
         </div>
         <div class="message" id="msg-box"></div>
-        <div class="advice-list" id="advice-list"></div>
       `;
 
       document.getElementById("score-num").textContent    = score;
       document.getElementById("status-label").textContent = t.label;
       document.getElementById("temp-val").textContent     = fmt(d.temperature);
       document.getElementById("hum-val").textContent      = fmt(d.humidity);
-      document.getElementById("msg-box").textContent      = totalAdvice(score);
+      document.getElementById("msg-box").textContent      = advice.summary;
       document.getElementById("water-status").textContent = sensorStatusLabel("water", d.water_status);
       document.getElementById("water-raw").textContent    = fmtRaw(d.water_raw);
       document.getElementById("light-status").textContent = sensorStatusLabel("light", d.light_status);
       document.getElementById("light-raw").textContent    = fmtRaw(d.light_raw);
-
-      const adviceList = document.getElementById("advice-list");
-      adviceList.innerHTML = "";
-      generateAdvice(d).forEach(function(item) {
-        const box = document.createElement("div");
-        box.className = "advice-item";
-        const label = document.createElement("span");
-        label.className = "advice-label";
-        label.textContent = item[0];
-        const text = document.createTextNode(item[1]);
-        box.append(label, text);
-        adviceList.appendChild(box);
-      });
+      renderDoctor(d, advice);
 
       const footer = document.getElementById("footer");
       const strong = document.createElement("strong");
