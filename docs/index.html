@@ -60,7 +60,7 @@
     }
 
     .doctor-card {
-      padding: 26px 22px 24px;
+      padding: 26px 22px 22px;
       text-align: left;
     }
 
@@ -164,40 +164,16 @@
       opacity: 0.92;
     }
 
-    .advice-list {
-      display: grid;
-      gap: 8px;
-      margin-top: 10px;
-      text-align: left;
-    }
-
-    .advice-item {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: clamp(12px, 3.5vw, 14px);
-      line-height: 1.5;
-    }
-
-    .advice-label {
-      display: block;
-      margin-bottom: 2px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      opacity: 0.62;
-    }
-
     /* ── Plant Doctor ── */
     .doctor-title {
       font-size: clamp(17px, 4vw, 20px);
       font-weight: 800;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       letter-spacing: 0.02em;
     }
 
     .doctor-section {
-      padding: 14px 0;
+      padding: 12px 0;
       border-top: 1px solid rgba(255, 255, 255, 0.16);
     }
 
@@ -229,22 +205,16 @@
     .level-dot.warning { background: #facc15; }
     .level-dot.danger { background: #f87171; }
 
-    .doctor-summary {
-      font-size: clamp(14px, 3.7vw, 16px);
-      font-weight: 650;
-      line-height: 1.55;
-    }
-
     .doctor-list {
       display: grid;
-      gap: 8px;
+      gap: 7px;
       list-style: none;
     }
 
     .doctor-row {
       display: grid;
       gap: 4px;
-      padding: 10px 12px;
+      padding: 9px 11px;
       border-radius: 12px;
       background: rgba(255, 255, 255, 0.1);
       line-height: 1.45;
@@ -270,12 +240,6 @@
       font-size: 13px;
       line-height: 1.5;
       opacity: 0.86;
-    }
-
-    .confidence {
-      font-size: 12px;
-      opacity: 0.66;
-      white-space: nowrap;
     }
 
     /* ── Loading / error ── */
@@ -462,67 +426,12 @@
       };
     }
 
-    function waterRawLabel(raw) {
-      if (raw == null) return "未取得";
-      if (raw >= 2500) return "十分";
-      if (raw >= 1500) return "湿り";
-      if (raw >= 1000) return "境界";
-      return "乾燥";
-    }
-
-    function lightRawLabel(raw) {
-      if (raw == null) return "未取得";
-      if (raw >= 3000) return "十分";
-      if (raw >= 2000) return "明るい";
-      if (raw >= 1000) return "やや暗い";
-      return "暗い";
-    }
-
     function vitalitySummary(score) {
       if (score >= 90) return ["good", "非常に良好です。植物は健康な状態です。"];
       if (score >= 70) return ["good", "安定しています。現在の管理を継続してください。"];
       if (score >= 50) return ["warning", "やや注意が必要です。温度・湿度・水位・照度を確認してください。"];
       if (score >= 30) return ["warning", "植物にストレスがかかっている可能性があります。"];
       return ["danger", "要対応です。給水・温度・光環境を確認してください。"];
-    }
-
-    function temperatureComment(value) {
-      if (value == null) return { level: "warning", comment: "温度は未取得です。" };
-      if (value >= 30) return { level: "warning", comment: "高温です。直射日光やLED距離を確認してください。" };
-      if (value >= 25) return { level: "good", comment: "適温範囲です。現在の温度は安定しています。" };
-      if (value >= 15) return { level: "good", comment: "やや低めですが、基本的には問題ありません。" };
-      return { level: "warning", comment: "低温です。生育が鈍化する可能性があります。" };
-    }
-
-    function humidityComment(value) {
-      if (value == null) return { level: "warning", comment: "湿度は未取得です。" };
-      if (value >= 80) return { level: "warning", comment: "湿度が高めです。カビや病害に注意してください。" };
-      if (value >= 50) return { level: "good", comment: "湿度は適正範囲です。" };
-      if (value >= 40) return { level: "warning", comment: "やや乾燥しています。植物の状態を確認してください。" };
-      return { level: "danger", comment: "乾燥しています。葉のしおれや蒸散増加に注意してください。" };
-    }
-
-    function waterComment(data) {
-      if (data.water_status === "dry") {
-        return { level: "danger", comment: "水不足が検出されています。補水してください。" };
-      }
-      if (data.water_status === "wet" || data.water_status === "enough_water") {
-        return { level: "good", comment: "水位は検出されています。" };
-      }
-      return { level: "warning", comment: "水位状態を確認してください。" };
-    }
-
-    function lightComment(data) {
-      if (data.light_status === "bright") {
-        return { level: "good", comment: "光量は十分です。" };
-      }
-      if (data.light_status === "dim") {
-        return { level: "warning", comment: "光量不足の可能性があります。照明や設置場所を確認してください。" };
-      }
-      if (data.light_status === "dark") {
-        return { level: "danger", comment: "光量不足です。生育に影響する可能性があります。" };
-      }
-      return { level: "warning", comment: "照度状態を確認してください。" };
     }
 
     function addCause(result, label, confidence, comment, actions) {
@@ -536,39 +445,9 @@
       const d = normalizeData(data);
       const score = d.vitality_score ?? 0;
       const summary = vitalitySummary(score);
-      const temp = temperatureComment(d.temperature);
-      const humidity = humidityComment(d.humidity);
-      const water = waterComment(d);
-      const light = lightComment(d);
       const result = {
         status: summary[0],
         summary: summary[1],
-        sensorComments: [
-          {
-            label: "温度",
-            value: `${fmt(d.temperature)}℃`,
-            level: temp.level,
-            comment: temp.comment,
-          },
-          {
-            label: "湿度",
-            value: `${fmt(d.humidity)}%`,
-            level: humidity.level,
-            comment: humidity.comment,
-          },
-          {
-            label: "水位",
-            value: `${sensorStatusLabel("water", d.water_status)} / raw ${fmtRaw(d.water_raw)} / ${waterRawLabel(d.water_raw)}`,
-            level: water.level,
-            comment: water.comment,
-          },
-          {
-            label: "照度",
-            value: `${d.light_status || "不明"} / raw ${fmtRaw(d.light_raw)} / ${lightRawLabel(d.light_raw)}`,
-            level: light.level,
-            comment: light.comment,
-          },
-        ],
         possibleCauses: [],
         actions: [],
       };
@@ -627,8 +506,8 @@
           result,
           "安定状態",
           90,
-          "現在の環境は安定しています。大きな異常は検出されていません。",
-          ["現在の管理を継続してください。", "定期的にろ過ウールと根の接触状態を確認してください。"]
+          "大きな異常は検出されていません。",
+          ["現在の管理を継続してください。"]
         );
       }
 
@@ -696,14 +575,6 @@
       doctor.innerHTML = `
         <div class="doctor-title">Plant Doctor</div>
         <section class="doctor-section">
-          <div class="doctor-heading"><span class="level-dot ${advice.status}"></span>総合判定</div>
-          <div class="doctor-summary" id="doctor-summary"></div>
-        </section>
-        <section class="doctor-section">
-          <div class="doctor-heading">センサー別分析</div>
-          <ul class="doctor-list" id="sensor-analysis"></ul>
-        </section>
-        <section class="doctor-section">
           <div class="doctor-heading">推定原因</div>
           <ul class="doctor-list" id="possible-causes"></ul>
         </section>
@@ -712,13 +583,6 @@
           <ul class="doctor-list" id="doctor-actions"></ul>
         </section>
       `;
-
-      document.getElementById("doctor-summary").textContent = advice.summary;
-
-      const sensorList = document.getElementById("sensor-analysis");
-      advice.sensorComments.forEach(function(item) {
-        appendDoctorRow(sensorList, item.label, item.value, item.comment, item.level);
-      });
 
       const causes = document.getElementById("possible-causes");
       advice.possibleCauses.forEach(function(item) {
