@@ -196,3 +196,26 @@
 - 給水経路異常、高温・強光ストレス、乾燥ストレス、光量不足、安定状態の複合条件を追加した。
 - メインカードと重複するセンサー別分析はPlant Doctorパネル上では非表示にし、推定原因と推奨アクション中心の表示へ整理した。
 - 安定時の「定期的にろ過ウールと根の接触状態を確認してください。」は冗長なため削除した。
+
+## 2026-06-11
+
+### 配線図のコード管理
+
+#### 変更したこと
+
+- Graphviz DOT形式の配線図ソース `docs/wiring.dot` を追加した。
+- `scripts/generate_wiring_diagram.py` から `docs/wiring.svg` を再生成できるようにした。
+- 水位センサー、照度センサー、DHT11、MCP3204/MCP3208、Raspberry Pi 40ピンヘッダーの接続を図示した。
+- Raspberry Piの物理ピン番号、BCM番号、SPIの送受信方向、未使用UART、3.3V/GND、DHT11の10kΩプルアップ、5V禁止を明記した。
+- READMEにGraphvizの導入方法と配線図生成コマンドを追加した。
+
+#### 動作確認
+
+- Graphviz互換レンダラーで `docs/wiring.dot` の構文を検証し、`docs/wiring.svg` を生成した。
+- ChromiumでSVGを画像化し、各信号線が意図したピン行へ接続されていることを目視確認した。
+- `python -m py_compile scripts/generate_wiring_diagram.py` を実行し、構文チェックOK。
+- Graphviz 2.42.4 導入後、`python scripts/generate_wiring_diagram.py` で正式に `docs/wiring.svg` を再生成した。
+
+#### 注意点
+
+- MCP3204とMCP3208ではパッケージの物理ピン番号が異なるため、図では共通の信号ピン名を使用している。

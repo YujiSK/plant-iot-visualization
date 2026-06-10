@@ -23,6 +23,17 @@ configuration uses DHT11 and MCP3204/MCP3208 ADC wiring instead.
   - `CS/SHDN` -> GPIO8 CE0 / physical pin 24
 - ADC `VDD` and `VREF` are 3.3V. Do not feed 5V into ADC inputs.
 
+The complete wiring diagram is generated from
+[`docs/wiring.dot`](docs/wiring.dot) and published as
+[`docs/wiring.svg`](docs/wiring.svg).
+
+Generate it after installing Graphviz:
+
+```bash
+sudo apt install graphviz
+python scripts/generate_wiring_diagram.py
+```
+
 ## Setup
 
 ```bash

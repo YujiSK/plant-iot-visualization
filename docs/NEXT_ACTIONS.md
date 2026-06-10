@@ -25,3 +25,4 @@
 - Flutterにはanon public keyのみを渡す
 - SUPABASE_SENSOR_KEY はRaspberry Pi側だけで使う
 - 現在のDHT11実行系では `TEMP_OFFSET` / `HUMIDITY_OFFSET` を使わない
+- 配線図を再生成する環境にはGraphvizが必要（`sudo apt install graphviz`）

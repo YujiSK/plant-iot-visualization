@@ -1,0 +1,142 @@
+digraph PlantIoTWiring {
+  graph [
+    rankdir=LR,
+    splines=polyline,
+    nodesep=0.65,
+    ranksep=1.35,
+    pad=0.35,
+    bgcolor="white",
+    fontname="Noto Sans CJK JP",
+    label="Plant IoT 配線図  |  全機器 3.3V / 共通GND",
+    labelloc=t,
+    fontsize=20
+  ];
+
+  node [
+    shape=plain,
+    fontname="Noto Sans CJK JP",
+    fontsize=11
+  ];
+
+  edge [
+    fontname="Noto Sans CJK JP",
+    fontsize=9,
+    color="#334155",
+    fontcolor="#0f172a",
+    arrowsize=0.7,
+    penwidth=1.5
+  ];
+
+  water [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="7" COLOR="#0284c7">
+        <TR><TD COLSPAN="2" BGCOLOR="#e0f2fe"><B>水位センサー</B></TD></TR>
+        <TR><TD PORT="vcc">VCC</TD><TD>3.3V入力</TD></TR>
+        <TR><TD PORT="gnd">GND</TD><TD>共通GND</TD></TR>
+        <TR><TD PORT="sig">SIG</TD><TD>アナログ出力 0～3.3V</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  light [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="7" COLOR="#ca8a04">
+        <TR><TD COLSPAN="2" BGCOLOR="#fef9c3"><B>照度センサー</B></TD></TR>
+        <TR><TD PORT="vcc">VCC</TD><TD>3.3V入力</TD></TR>
+        <TR><TD PORT="gnd">GND</TD><TD>共通GND</TD></TR>
+        <TR><TD PORT="ao">AO</TD><TD>アナログ出力 0～3.3V</TD></TR>
+        <TR><TD>DO</TD><TD>未使用</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  dht11 [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="7" COLOR="#16a34a">
+        <TR><TD COLSPAN="2" BGCOLOR="#dcfce7"><B>DHT11 温湿度センサー</B></TD></TR>
+        <TR><TD PORT="vcc">VCC</TD><TD>3.3V入力</TD></TR>
+        <TR><TD PORT="data">DATA</TD><TD>デジタル双方向</TD></TR>
+        <TR><TD>NC</TD><TD>未接続</TD></TR>
+        <TR><TD PORT="gnd">GND</TD><TD>共通GND</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  adc [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="7" COLOR="#7c3aed">
+        <TR><TD COLSPAN="3" BGCOLOR="#ede9fe"><B>MCP3204 / MCP3208 ADC</B></TD></TR>
+        <TR><TD PORT="ch0">CH0</TD><TD>アナログ入力</TD><TD>水位SIG</TD></TR>
+        <TR><TD PORT="ch1">CH1</TD><TD>アナログ入力</TD><TD>照度AO</TD></TR>
+        <TR><TD PORT="vdd">VDD</TD><TD>電源</TD><TD>3.3V</TD></TR>
+        <TR><TD PORT="vref">VREF</TD><TD>基準電圧</TD><TD>3.3V</TD></TR>
+        <TR><TD PORT="agnd">AGND</TD><TD>アナログGND</TD><TD>共通GND</TD></TR>
+        <TR><TD PORT="dgnd">DGND</TD><TD>デジタルGND</TD><TD>共通GND</TD></TR>
+        <TR><TD PORT="cs">CS/SHDN</TD><TD>SPI選択入力</TD><TD>Active Low</TD></TR>
+        <TR><TD PORT="clk">CLK</TD><TD>SPIクロック入力</TD><TD>Piから受信</TD></TR>
+        <TR><TD PORT="din">DIN</TD><TD>SPIデータ入力 / RX</TD><TD>Pi MOSIから受信</TD></TR>
+        <TR><TD PORT="dout">DOUT</TD><TD>SPIデータ出力 / TX</TD><TD>Pi MISOへ送信</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  rpi [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="7" COLOR="#be123c">
+        <TR><TD COLSPAN="4" BGCOLOR="#ffe4e6"><B>Raspberry Pi 40ピンヘッダー</B></TD></TR>
+        <TR><TD><B>物理</B></TD><TD><B>BCM / 機能</B></TD><TD><B>方向</B></TD><TD><B>接続先</B></TD></TR>
+        <TR><TD PORT="p1">1</TD><TD>3.3V</TD><TD>電源出力</TD><TD>3.3Vバス</TD></TR>
+        <TR><TD>2 / 4</TD><TD>5V</TD><TD>電源出力</TD><TD><B>使用禁止</B></TD></TR>
+        <TR><TD PORT="p6">6</TD><TD>GND</TD><TD>電源GND</TD><TD>共通GNDバス</TD></TR>
+        <TR><TD PORT="p7">7</TD><TD>GPIO4</TD><TD>デジタル双方向</TD><TD>DHT11 DATA</TD></TR>
+        <TR><TD>8</TD><TD>GPIO14 / UART TXD</TD><TD>送信</TD><TD>未使用</TD></TR>
+        <TR><TD>10</TD><TD>GPIO15 / UART RXD</TD><TD>受信</TD><TD>未使用</TD></TR>
+        <TR><TD PORT="p19">19</TD><TD>GPIO10 / SPI0 MOSI</TD><TD>出力 / TX</TD><TD>ADC DIN</TD></TR>
+        <TR><TD PORT="p21">21</TD><TD>GPIO9 / SPI0 MISO</TD><TD>入力 / RX</TD><TD>ADC DOUT</TD></TR>
+        <TR><TD PORT="p23">23</TD><TD>GPIO11 / SPI0 SCLK</TD><TD>出力</TD><TD>ADC CLK</TD></TR>
+        <TR><TD PORT="p24">24</TD><TD>GPIO8 / SPI0 CE0</TD><TD>出力</TD><TD>ADC CS/SHDN</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  power_note [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="8" COLOR="#475569" BGCOLOR="#f8fafc">
+        <TR><TD><B>電源配線</B></TD></TR>
+        <TR><TD ALIGN="LEFT">物理1番 3.3V → 全センサーVCC、ADC VDD/VREF</TD></TR>
+        <TR><TD ALIGN="LEFT">物理6番 GND → 全センサーGND、ADC AGND/DGND</TD></TR>
+        <TR><TD ALIGN="LEFT">DHT11 DATA → 10kΩ → 3.3V（プルアップ）</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  warning [
+    label=<
+      <TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="8" COLOR="#dc2626" BGCOLOR="#fff7ed">
+        <TR><TD><B>注意</B></TD></TR>
+        <TR><TD ALIGN="LEFT">GPIOとADC入力へ5Vを入れない</TD></TR>
+        <TR><TD ALIGN="LEFT">ADC入力範囲は0～VREF（現在3.3V）</TD></TR>
+        <TR><TD ALIGN="LEFT">MCP3204/3208の物理ピン番号は型番・パッケージのデータシートで確認</TD></TR>
+      </TABLE>
+    >
+  ];
+
+  { rank=same; dht11; water; light; }
+  { rank=same; adc; power_note; }
+  { rank=same; rpi; warning; }
+
+  dht11 -> water [style=invis, weight=20];
+  water -> light [style=invis, weight=20];
+  adc -> power_note [style=invis, weight=20];
+  rpi -> warning [style=invis, weight=20];
+
+  water:sig:e -> adc:ch0:w [label="アナログ信号"];
+  light:ao:e -> adc:ch1:w [label="アナログ信号"];
+
+  dht11:data:e -> rpi:p7:w [dir=both, label="GPIO4 / DHT11 DATA"];
+
+  rpi:p24:w -> adc:cs:e [dir=back, label="CE0 → CS"];
+  rpi:p23:w -> adc:clk:e [dir=back, label="SCLK → CLK"];
+  rpi:p19:w -> adc:din:e [dir=back, label="MOSI: Pi TX → ADC RX"];
+  adc:dout:e -> rpi:p21:w [label="MISO: ADC TX → Pi RX"];
+}
