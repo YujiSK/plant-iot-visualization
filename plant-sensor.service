@@ -1,5 +1,5 @@
 [Unit]
-Description=Plant IoT DHT11 and ADC Sensor Sender
+Description=Plant IoT DHT11 DS18B20 and ADC Sensor Sender
 After=network.target plant-api.service
 Requires=plant-api.service
 

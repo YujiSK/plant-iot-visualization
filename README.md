@@ -8,12 +8,13 @@ configuration uses DHT11 and MCP3204/MCP3208 ADC wiring instead.
 ## Runtime
 
 - `main.py`: FastAPI API. Stores sensor readings in local SQLite.
-- `send_sensor.py`: Reads DHT11 temperature/humidity and MCP3204/MCP3208 ADC values, then posts each reading to the local API and Supabase.
+- `send_sensor.py`: Reads DHT11 temperature/humidity, DS18B20 solution temperature, and MCP3204/MCP3208 ADC values, then posts each reading to the local API and Supabase.
 - `docs/index.html`: Static GitHub Pages UI. Reads the latest row from Supabase.
 
 ## Current wiring
 
-- DHT11 `DATA` -> Raspberry Pi GPIO4 / physical pin 7, with 10kohm pull-up to 3.3V.
+- DHT11 `DATA` -> Raspberry Pi GPIO17 / physical pin 11, with 10kohm pull-up to 3.3V.
+- DS18B20 `DATA` -> Raspberry Pi GPIO4 / physical pin 7, with 4.7kohm pull-up to 3.3V.
 - MCP3204/MCP3208 `CH0` -> water level sensor `SIG`.
 - MCP3204/MCP3208 `CH1` -> light sensor `AO`.
 - MCP3204/MCP3208 uses SPI0 CE0:
@@ -23,7 +24,8 @@ configuration uses DHT11 and MCP3204/MCP3208 ADC wiring instead.
   - `CS/SHDN` -> GPIO8 CE0 / physical pin 24
 - ADC `VDD` and `VREF` are 3.3V. Do not feed 5V into ADC inputs.
 
-The complete wiring diagram is generated from
+The complete wiring reference is available in
+[`docs/WIRING.md`](docs/WIRING.md). The diagram is generated from
 [`docs/wiring.dot`](docs/wiring.dot) and published as
 [`docs/wiring.svg`](docs/wiring.svg).
 
@@ -50,11 +52,16 @@ SUPABASE_KEY=your-publishable-key
 SUPABASE_SENSOR_KEY=your-private-service-role-or-sensor-write-key
 SENSOR_INTERVAL_SECONDS=300
 DHT_RETRIES=8
+DS18B20_SENSOR_ID=28-your-sensor-id
 MANUAL_SEND_MIN_INTERVAL_SECONDS=60
 ```
 
 `TEMP_OFFSET` and `HUMIDITY_OFFSET` were for the old Sense HAT prototype. The
 current DHT11 runtime intentionally does not apply offset correction.
+
+Enable 1-Wire for the DS18B20 by adding
+`dtoverlay=w1-gpio,gpiopin=4` to `/boot/firmware/config.txt`, then reboot.
+`DS18B20_SENSOR_ID` is optional when only one DS18B20 is connected.
 
 Generate the static Pages config:
 
@@ -86,10 +93,11 @@ Regular sends are aligned to wall-clock interval boundaries. With the default
 ## Sensor fields
 
 Local SQLite is migrated automatically on API startup. Supabase needs the
-matching migration before ADC fields can be stored there:
+matching migrations before the additional sensor fields can be stored there:
 
 ```bash
 supabase_sensor_logs_adc_migration.sql
+supabase_solution_temperature_migration.sql
 ```
 
 Until that migration is applied, `send_sensor.py` retries Supabase writes

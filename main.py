@@ -38,6 +38,9 @@ def init_db():
             "light_raw": "ALTER TABLE sensor_logs ADD COLUMN light_raw INTEGER",
             "light_voltage": "ALTER TABLE sensor_logs ADD COLUMN light_voltage REAL",
             "light_status": "ALTER TABLE sensor_logs ADD COLUMN light_status TEXT",
+            "solution_temperature": (
+                "ALTER TABLE sensor_logs ADD COLUMN solution_temperature REAL"
+            ),
         }
         for column, statement in migrations.items():
             if column not in existing_columns:
@@ -58,6 +61,7 @@ class SensorData(BaseModel):
     light_raw: Optional[int] = None
     light_voltage: Optional[float] = None
     light_status: Optional[str] = None
+    solution_temperature: Optional[float] = None
 
 
 @app.post("/sensor")
@@ -70,8 +74,9 @@ def receive_sensor(data: SensorData):
             """INSERT INTO sensor_logs
                (temperature, humidity, pressure, vitality_score, message, source,
                 water_raw, water_voltage, water_status,
-                light_raw, light_voltage, light_status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                light_raw, light_voltage, light_status,
+                solution_temperature)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 data.temperature,
                 data.humidity,
@@ -85,6 +90,7 @@ def receive_sensor(data: SensorData):
                 data.light_raw,
                 data.light_voltage,
                 data.light_status,
+                data.solution_temperature,
             ),
         )
     return {"status": "ok"}
@@ -96,7 +102,8 @@ def get_latest():
         row = conn.execute("""
             SELECT id, temperature, humidity, pressure, created_at, vitality_score, message, source,
                    water_raw, water_voltage, water_status,
-                   light_raw, light_voltage, light_status
+                   light_raw, light_voltage, light_status,
+                   solution_temperature
             FROM sensor_logs
             ORDER BY id DESC
             LIMIT 1
@@ -120,4 +127,5 @@ def get_latest():
         "light_raw": row[11],
         "light_voltage": row[12],
         "light_status": row[13],
+        "solution_temperature": row[14],
     }

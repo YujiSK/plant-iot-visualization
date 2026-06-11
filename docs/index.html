@@ -355,6 +355,7 @@
     const DEMO_DATA = {
       good: {
         temperature: 26.0, humidity: 50.0,
+        solution_temperature: 24.5,
         water_raw: 2100, water_status: "enough_water",
         water_voltage: 1.692,
         light_raw: 1600, light_status: "bright",
@@ -363,6 +364,7 @@
       },
       warning: {
         temperature: 30.5, humidity: 38.0,
+        solution_temperature: 28.0,
         water_raw: 900, water_status: "wet",
         water_voltage: 0.725,
         light_raw: 850, light_status: "dim",
@@ -371,6 +373,7 @@
       },
       danger: {
         temperature: 36.0, humidity: 28.0,
+        solution_temperature: 32.5,
         water_raw: 0, water_status: "dry",
         water_voltage: 0.0,
         light_raw: 300, light_status: "dark",
@@ -630,6 +633,12 @@
             <div class="sensor-label">湿度</div>
           </div>
           <div class="sensor-tile">
+            <div class="sensor-value">
+              <span id="solution-temp-val"></span><span class="sensor-unit">℃</span>
+            </div>
+            <div class="sensor-label">養液温度</div>
+          </div>
+          <div class="sensor-tile">
             <div class="sensor-value status-value" id="water-status"></div>
             <div class="sensor-label">水位</div>
             <div class="sensor-detail">raw: <span id="water-raw"></span></div>
@@ -647,6 +656,7 @@
       document.getElementById("status-label").textContent = t.label;
       document.getElementById("temp-val").textContent     = fmt(d.temperature);
       document.getElementById("hum-val").textContent      = fmt(d.humidity);
+      document.getElementById("solution-temp-val").textContent = fmt(d.solution_temperature);
       document.getElementById("msg-box").textContent      = advice.summary;
       document.getElementById("water-status").textContent = sensorStatusLabel("water", d.water_status);
       document.getElementById("water-raw").textContent    = fmtRaw(d.water_raw);
@@ -705,7 +715,7 @@
       try {
         const res = await fetch(
           `${BASE}/rest/v1/sensor_logs` +
-          `?select=temperature,humidity,water_raw,water_voltage,water_status,light_raw,light_voltage,light_status,vitality_score,message,created_at` +
+          `?select=temperature,humidity,solution_temperature,water_raw,water_voltage,water_status,light_raw,light_voltage,light_status,vitality_score,message,created_at` +
           `&order=created_at.desc&limit=1`,
           { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
         );

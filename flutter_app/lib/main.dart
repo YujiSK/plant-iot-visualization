@@ -70,7 +70,7 @@ class _PlantHomePageState extends State<PlantHomePage> {
     try {
       final latestRow = await supabase
           .from('sensor_logs')
-          .select('id, temperature, humidity, pressure, water_raw, water_status, light_raw, light_status, vitality_score, message, created_at')
+          .select('id, temperature, humidity, pressure, solution_temperature, water_raw, water_status, light_raw, light_status, vitality_score, message, created_at')
           .order('created_at', ascending: false)
           .limit(1)
           .single();
@@ -207,6 +207,7 @@ class StateCard extends StatelessWidget {
               children: [
                 Metric(label: '温度', value: fmt(row['temperature']) + ' ℃'),
                 Metric(label: '湿度', value: fmt(row['humidity']) + ' %'),
+                Metric(label: '養液温度', value: fmt(row['solution_temperature']) + ' ℃'),
                 Metric(label: '水位', value: sensorStatusLabel('water', row['water_status']), detail: 'raw: ' + fmtRaw(row['water_raw'])),
                 Metric(label: '照度', value: sensorStatusLabel('light', row['light_status']), detail: 'raw: ' + fmtRaw(row['light_raw'])),
               ],

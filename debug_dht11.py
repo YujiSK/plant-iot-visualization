@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Debug DHT11 temperature/humidity readings on Raspberry Pi GPIO4.
+"""Debug DHT11 temperature/humidity readings on Raspberry Pi GPIO17.
 
 Wiring:
 - DHT11 VCC -> 3.3V
 - DHT11 GND -> GND
-- DHT11 DATA -> GPIO4
+- DHT11 DATA -> GPIO17
 - DHT11 DATA -> 10kohm -> 3.3V
 """
 
@@ -15,13 +15,13 @@ import adafruit_dht
 import board
 
 PIN_BY_BCM = {
-    4: board.D4,
+    17: board.D17,
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Read DHT11 from Raspberry Pi GPIO.")
-    parser.add_argument("--pin", type=int, default=4, help="BCM GPIO pin. Default: 4")
+    parser.add_argument("--pin", type=int, default=17, help="BCM GPIO pin. Default: 17")
     parser.add_argument("--retries", type=int, default=10, help="read attempts. Default: 10")
     parser.add_argument(
         "--interval",
@@ -47,7 +47,7 @@ def main():
 
     print("DHT11 debug")
     print(f"DATA GPIO: BCM {args.pin}")
-    print("Expected wiring: VCC=3.3V, GND=GND, DATA=GPIO4, DATA pull-up=10kohm to 3.3V")
+    print("Expected wiring: VCC=3.3V, GND=GND, DATA=GPIO17, DATA pull-up=10kohm to 3.3V")
     print()
 
     try:

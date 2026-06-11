@@ -219,3 +219,121 @@
 #### 注意点
 
 - MCP3204とMCP3208ではパッケージの物理ピン番号が異なるため、図では共通の信号ピン名を使用している。
+
+### 配線図の可読性改善
+
+#### 変更したこと
+
+- センサー、ADC、Raspberry Piの対象行から配線が伸びるよう、Graphvizの表ポート位置を調整した。
+- MCP3204/MCP3208のSPI行をRaspberry Piの物理ピン順に合わせて並べ替えた。
+- 配線を折れ線から直線へ変更し、交差と表への重なりを減らした。
+- Markdown版の配線資料 `docs/WIRING.md` を追加した。
+- READMEの配線図案内からMarkdown版を参照できるようにした。
+
+#### 動作確認
+
+- Graphviz 15.0.0で `docs/wiring.svg` を再生成した。
+- PNGへレンダリングし、接続行、配線方向、表との重なりを目視確認した。
+
+## 2026-06-12
+
+### DS18B20養液温度センサーの追加
+
+#### 実配線
+
+- DHT11のDATAをGPIO4からGPIO17（物理ピン11）へ移動した。
+- DS18B20のDATA（黄）をGPIO4（物理ピン7）へ接続した。
+- DS18B20のVCC（赤）を3.3V、GND（黒）を共通GNDへ接続した。
+- DS18B20のDATAと3.3Vの間に4.7kΩプルアップ抵抗を接続する構成とした。
+- 水位センサーCH0、照度センサーCH1、MCP3208のSPI配線は従来構成を維持した。
+
+#### 実装したこと
+
+- Linux 1-Wire sysfsからDS18B20を読み取る `ds18b20.py` を追加した。
+- `send_sensor.py` のDHT11をGPIO17へ変更し、DS18B20の養液温度取得を追加した。
+- ローカルSQLiteとSupabaseの `sensor_logs` にNULL許可の `solution_temperature` を追加した。
+- GitHub PagesとFlutterへ養液温度表示を追加した。
+- 配線図と `docs/WIRING.md` をDHT11 GPIO17 / DS18B20 GPIO4構成へ更新した。
+- Supabase migration `add_solution_temperature` を適用し、`solution_temperature numeric NULL` を確認した。
+
+#### 確認結果
+
+- Raspberry Piの実配線はDHT11 GPIO17、DS18B20 GPIO4へ変更済み。
+- Raspberry Piの `/boot/firmware/config.txt` には1-Wire設定がまだ追加されていない。
+- `/sys/bus/w1/devices` にDS18B20デバイスはまだ検出されていない。
+- Raspberry Pi上のリポジトリは旧コードのままで、`send_sensor.py` はDHT11 GPIO4指定になっている。
+- `plant-sensor.service` は `ModuleNotFoundError: No module named 'adafruit_dht'` により再起動を繰り返している。
+
+#### 注意点
+
+- 配線変更は完了しているが、Pi側への新コード反映、1-Wire有効化、再起動、依存パッケージ復旧が必要。
+- 1-Wire有効化後は `/sys/bus/w1/devices/28-*/w1_slave` の出現を確認する。
+
+### 再起動後の確認
+
+#### 完了したこと
+
+- `/boot/firmware/config.txt` の `dtoverlay=w1-gpio,gpiopin=4` が有効になった。
+- `w1_gpio` / `wire` カーネルモジュールのロードを確認した。
+- Piの仮想環境へ欠落していた `click`、`adafruit-circuitpython-dht`、`gpiod`、`requests`、`spidev` などを再導入した。
+- DHT11 GPIO17 / DS18B20 GPIO4対応コードを `/home/pi/plant-iot` へ反映した。
+- `plant-api.service` と `plant-sensor.service` が `active (running)` へ復旧した。
+- `/latest` が `solution_temperature` を返すことを確認した。
+
+#### センサー確認結果
+
+- DHT11はGPIO17（物理ピン11）で8回読み取りを試行したが、`DHT sensor not found, check wiring` となった。
+- DS18B20用1-Wireマスターは有効だが、スレーブ数は0で `28-*` デバイスは未検出。
+- 1-Wire探索は43回実行されているため、OS設定ではなく配線・電源・プルアップ抵抗を優先して確認する。
+- GPIO4は物理ピン7、GPIO17は物理ピン11であることをPiの `pinout` で再確認した。
+
+#### 次の配線確認
+
+- DS18B20: 赤を3.3V（物理1または17）、黒をGND、黄をGPIO4（物理7）へ接続する。
+- DS18B20: 黄と3.3Vの間に4.7kΩ抵抗が入っていることを確認する。
+- DHT11: DATAをGPIO17（物理11）へ接続し、DATAと3.3Vの間の10kΩプルアップを確認する。
+- 3.3Vと5Vを取り違えていないこと、全機器のGNDが共通であることを確認する。
+
+### センサー再接続後の統合確認
+
+#### 確認結果
+
+- DS18B20デバイス `28-000000cc2639` を1-Wireで検出した。
+- DS18B20単体確認で養液温度 `26.562℃` を3回連続取得した。
+- 常駐サービス経由でDHT11 GPIO17から温度 `26.6℃`、湿度 `60%` を取得した。
+- 同一送信で養液温度 `26.5℃`、水位ADC `0`、照度ADC `2858` を取得した。
+- ローカルAPIへのPOSTは `200`、SupabaseへのPOSTは `201` で成功した。
+- `/latest` に `source=dht11-ds18b20-mcp3208` と `solution_temperature=26.5` が保存された。
+- Supabase最新行にも `solution_temperature=26.5` が保存されていることを確認した。
+- `plant-api.service` と `plant-sensor.service` はともに `active (running)`。
+
+#### 補足
+
+- 配線が外れていた期間はDHT11とDS18B20の両方が未検出だったが、再接続後は正常化した。
+- DS18B20の1-Wire設定、GPIO割り当て、保存経路は動作確認済み。
+
+### バジル枯死候補時期のログ分析
+
+#### 分析結果
+
+- Supabaseの温湿度ログから、強い高温・乾燥ストレスの候補期間を3回抽出した。
+- 候補Aは2026-04-26 02:57-09:10 JST、平均36.4℃、平均湿度30.4%だった。
+- 候補Bは2026-05-12 11:01-05-14 00:32 JST、平均39.7℃、平均湿度30.6%で、3候補中最も深刻だった。
+- 候補Cは2026-05-18 02:35-09:58 JST、平均32.7℃、平均湿度26.9%だった。
+- 2026-05-18 09:10 JSTの`care_logs`確認記録後、温湿度が改善している。
+- 2026-05-19以降とDHT11へ移行した2026-06-02以降には、同程度の高温・低湿度は記録されていない。
+
+#### 注意点
+
+- 候補期間は旧Sense HATと補正値を使用しており、絶対温度には本体発熱や補正誤差が含まれる可能性がある。
+- 水位ADCの記録開始は2026-06-02のため、それ以前の枯死時の水不足はログから確認できない。
+- 現在の水位センサーでは貯水部の水と、フェルト・根まで水が届いたかを区別できない。
+- 詳細は`docs/HISTORICAL_STRESS_ANALYSIS_2026-06-12.md`へ記録した。
+
+#### 養液・フェルト変更後の枯死
+
+- ユーザーの記憶から、養液とフェルトへ変更後の水不足による枯死は2026-06-02の週の初め頃と暫定特定した。
+- 2026-06-02から6月5日の平均温度は24.8-26.6℃、平均湿度は59.3-64.0%で、高温・空気乾燥は確認されなかった。
+- 同期間の水位ADCは全記録が0だった。
+- この回は高温よりも、養液不足、フェルトの吸水不足、根との接触不良による給水ストレスの可能性が高い。
+- 正確な変更日時、枯死確認日時、ADC値0が実水位を正しく表していたかは未確認。

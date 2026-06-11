@@ -2,7 +2,8 @@
 """Read the current wired sensors and send readings to local API and Supabase.
 
 Current hardware:
-- DHT11 DATA on BCM GPIO4 for temperature/humidity
+- DHT11 DATA on BCM GPIO17 for temperature/humidity
+- DS18B20 DATA on BCM GPIO4 for solution temperature
 - MCP3204/MCP3208 on SPI0 CE0
 - ADC CH0: water level sensor SIG
 - ADC CH1: light sensor AO
@@ -21,6 +22,7 @@ import requests
 import spidev
 from dotenv import load_dotenv
 
+from ds18b20 import read_temperature as read_ds18b20_temperature
 from vitality import calculate_vitality, generate_message
 
 URL = "http://localhost:8000/sensor"
@@ -35,6 +37,7 @@ SUPABASE_ENDPOINT = f"{SUPABASE_URL}/rest/v1/sensor_logs" if SUPABASE_URL else "
 
 DHT_RETRIES = int(os.getenv("DHT_RETRIES", "8"))
 DHT_RETRY_INTERVAL_SECONDS = float(os.getenv("DHT_RETRY_INTERVAL_SECONDS", "2.0"))
+DS18B20_SENSOR_ID = os.getenv("DS18B20_SENSOR_ID") or None
 
 ADC_BUS = int(os.getenv("ADC_BUS", "0"))
 ADC_DEVICE = int(os.getenv("ADC_DEVICE", "0"))
@@ -130,6 +133,14 @@ def read_dht11(dht):
     raise RuntimeError(f"DHT11 read failed after {DHT_RETRIES} attempts: {last_error}")
 
 
+def read_solution_temperature():
+    try:
+        return read_ds18b20_temperature(sensor_id=DS18B20_SENSOR_ID)
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        print(f"DS18B20 unavailable: {exc}", flush=True)
+        return None
+
+
 def send_to_supabase(payload):
     """Send sensor payload to Supabase REST API without interrupting main loop."""
     if not SUPABASE_ENDPOINT or not SUPABASE_SENSOR_KEY:
@@ -149,14 +160,28 @@ def send_to_supabase(payload):
         print(f"SUPABASE STATUS: {response.status_code}", flush=True)
         print(f"SUPABASE RESPONSE: {response.text}", flush=True)
 
-        if response.status_code >= 400 and has_adc_fields(payload):
-            legacy_payload = legacy_supabase_payload(payload)
+        retry = response
+        if response.status_code >= 400 and "solution_temperature" in payload:
+            retry_payload = {
+                key: value
+                for key, value in payload.items()
+                if key != "solution_temperature"
+            }
             retry = requests.post(
+                SUPABASE_ENDPOINT, json=retry_payload, headers=headers, timeout=10
+            )
+            print("SUPABASE RETRY WITHOUT SOLUTION TEMPERATURE", flush=True)
+            print(f"SUPABASE RETRY STATUS: {retry.status_code}", flush=True)
+            print(f"SUPABASE RETRY RESPONSE: {retry.text}", flush=True)
+
+        if retry.status_code >= 400 and has_adc_fields(payload):
+            legacy_payload = legacy_supabase_payload(payload)
+            legacy_retry = requests.post(
                 SUPABASE_ENDPOINT, json=legacy_payload, headers=headers, timeout=10
             )
             print("SUPABASE RETRY WITHOUT ADC FIELDS", flush=True)
-            print(f"SUPABASE RETRY STATUS: {retry.status_code}", flush=True)
-            print(f"SUPABASE RETRY RESPONSE: {retry.text}", flush=True)
+            print(f"SUPABASE RETRY STATUS: {legacy_retry.status_code}", flush=True)
+            print(f"SUPABASE RETRY RESPONSE: {legacy_retry.text}", flush=True)
     except Exception as exc:
         print("SUPABASE ERROR:", exc, flush=True)
 
@@ -182,6 +207,7 @@ def read_sensor_payload(dht, spi):
 
     water_raw = read_adc_median(spi, 0)
     light_raw = read_adc_median(spi, 1)
+    solution_temperature = read_solution_temperature()
 
     vitality_score = calculate_vitality(temperature, humidity)
     message = generate_message(temperature, humidity)
@@ -190,7 +216,8 @@ def read_sensor_payload(dht, spi):
         "temperature": temperature,
         "humidity": humidity,
         "pressure": None,
-        "source": "dht11-mcp3204",
+        "source": "dht11-ds18b20-mcp3208",
+        "solution_temperature": solution_temperature,
         "water_raw": water_raw,
         "water_voltage": voltage_from_raw(water_raw),
         "water_status": water_status(water_raw),
@@ -217,6 +244,7 @@ def run_once(dht, spi):
         f"temperature={data['temperature']}, "
         f"raw_humidity={raw_humidity}, "
         f"humidity={data['humidity']}, "
+        f"solution_temperature={data['solution_temperature']}, "
         f"water={data['water_raw']}({data['water_status']}), "
         f"light={data['light_raw']}({data['light_status']}), "
         f"vitality={supabase_payload['vitality_score']}, "
@@ -317,7 +345,7 @@ def initial_last_sent_at():
 def main():
     signal.signal(signal.SIGUSR1, request_manual_send)
 
-    dht = adafruit_dht.DHT11(board.D4)
+    dht = adafruit_dht.DHT11(board.D17)
     spi = spidev.SpiDev()
     spi.open(ADC_BUS, ADC_DEVICE)
     spi.max_speed_hz = ADC_MAX_SPEED_HZ
