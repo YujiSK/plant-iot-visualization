@@ -28,3 +28,4 @@
 - 現在のDHT11実行系では `TEMP_OFFSET` / `HUMIDITY_OFFSET` を使わない
 - 配線図を再生成する環境にはGraphvizが必要（`sudo apt install graphviz`）
 - `raspberrypi2`ではBH1750とDS18B20が検出されるまでセンサーサービスを有効化しない
+- `raspberrypi2`は`requirements-raspberrypi2.txt`を使用し、不要な`lgpio`を導入しない

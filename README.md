@@ -48,6 +48,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+The secondary device does not need the DHT11/SPI dependencies:
+
+```bash
+# raspberrypi2
+pip install -r requirements-raspberrypi2.txt
+```
+
 Create `.env`:
 
 ```dotenv

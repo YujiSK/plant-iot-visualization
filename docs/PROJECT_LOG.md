@@ -393,3 +393,4 @@
 - Pythonテスト15件成功。
 - GitHub PagesのJavaScript構文チェック成功。
 - Supabase migration適用後、追加列の型とNULL許可を確認した。
+- `raspberrypi2`ではDHT11/SPIを使用しないため、`lgpio`を除外した`requirements-raspberrypi2.txt`を追加した。
