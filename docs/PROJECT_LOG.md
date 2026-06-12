@@ -412,3 +412,10 @@
 - 2号機のBH1750は引き続きI2C未検出のため、`light_lux`はNULLで保存している。
 - 2号機のホスト名はcloud-init設定も含めて`raspberrypi2`へ変更し、再起動後も維持されることを確認した。
 - `raspi`のunitファイル名変更はsudoパスワードが必要なため未実施。ただし既存unitで新しい専用コードが正常稼働している。
+
+#### BH1750配線修正後の確認
+
+- `raspberrypi2`の配線修正後、BH1750から`244.2 lx`、`244.2 lx`、`194.2 lx`を連続取得した。
+- systemd serviceへ手動送信を要求し、`light_lux=245.8`、`light_status=dim`でSupabase POST `201`を確認した。
+- Supabase最新行に養液温度`27.375℃`、照度`245.8 lx`、フロート`low_water`が保存された。
+- BH1750、DS18B20、フロートスイッチの3センサーすべてが常駐serviceから送信可能になった。
