@@ -399,3 +399,16 @@
 - BH1750だけ未検出でもDS18B20とフロートの送信を継続できるよう、各センサーを独立して読み取る構成へ変更した。
 - DHTを持たない2号機のログを保存するため、Supabaseの`temperature`と`humidity`をNULL許可へ変更した。既存値は変更していない。
 - DS18B20の一時的なCRC失敗に対して3回まで再試行するようにした。
+
+#### 配備結果
+
+- コミット`999be1e`以降をGitHubへpushし、両Piへ反映した。
+- `raspi`は既存serviceから互換ラッパー経由で`send_sensor_raspi.py`を実行している。
+- `raspi`の最新ログに`device_id=raspi`、`location_id=location-a`が保存され、Supabase POST `201`を確認した。
+- `raspberrypi2`へリポジトリ、仮想環境、専用requirements、`.env`、systemd serviceを配備した。
+- 秘密情報のコピーに使用したPC上の一時`.env`ファイルは処理直後に削除した。
+- `plant-sensor-raspberrypi2.service`を有効化し、再起動後も`active (running)`で自動起動することを確認した。
+- `raspberrypi2`は`solution_temperature=26.75`、`float_switch_state=low_water`をSupabaseへPOST `201`で保存した。
+- 2号機のBH1750は引き続きI2C未検出のため、`light_lux`はNULLで保存している。
+- 2号機のホスト名はcloud-init設定も含めて`raspberrypi2`へ変更し、再起動後も維持されることを確認した。
+- `raspi`のunitファイル名変更はsudoパスワードが必要なため未実施。ただし既存unitで新しい専用コードが正常稼働している。
