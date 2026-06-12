@@ -2,11 +2,13 @@
 
 ## 次にやること
 
-1. GitHub Pagesに養液温度が表示されることを確認する
-2. `journalctl -u plant-sensor.service -n 80 --no-pager -l` で、通常送信が 00/05/10/15/... 分付近に揃うことを確認する
-3. Flutter SDKがある環境で `flutter analyze` と実機表示を確認する
-4. 2026-06-02の週初め頃に行った植え替え、養液変更、フェルト変更、枯死確認の正確な日時を整理する
-5. 今後の給水・植え替え作業を `care_logs` に記録できる入力方法を追加する
+1. `raspberrypi2`のBH1750配線を再確認し、`i2cdetect -y 1`で`23`を検出する
+2. `raspberrypi2`のDS18B20配線と4.7kΩ抵抗を再確認し、`28-*`を検出する
+3. フロートスイッチの設置方向を決め、GPIO17の`lo`が水不足になることを確認する
+4. GitHub Pagesを`?device=raspi`と`?device=raspberrypi2`で確認する
+5. Flutter SDKがある環境で`DEVICE_ID`を切り替えて実機表示を確認する
+6. 2026-06-02の週初め頃に行った植え替え、養液変更、フェルト変更、枯死確認の正確な日時を整理する
+7. 今後の給水・植え替え作業を`care_logs`に記録できる入力方法を追加する
 
 ## 保留
 
@@ -25,3 +27,4 @@
 - SUPABASE_SENSOR_KEY はRaspberry Pi側だけで使う
 - 現在のDHT11実行系では `TEMP_OFFSET` / `HUMIDITY_OFFSET` を使わない
 - 配線図を再生成する環境にはGraphvizが必要（`sudo apt install graphviz`）
+- `raspberrypi2`ではBH1750とDS18B20が検出されるまでセンサーサービスを有効化しない

@@ -50,6 +50,8 @@ class PlantHomePage extends StatefulWidget {
 
 class _PlantHomePageState extends State<PlantHomePage> {
   final supabase = Supabase.instance.client;
+  static const deviceId =
+      String.fromEnvironment('DEVICE_ID', defaultValue: 'raspi');
   Map<String, dynamic>? latest;
   List<Map<String, dynamic>> careLogs = const [];
   bool loading = true;
@@ -70,7 +72,8 @@ class _PlantHomePageState extends State<PlantHomePage> {
     try {
       final latestRow = await supabase
           .from('sensor_logs')
-          .select('id, temperature, humidity, pressure, solution_temperature, water_raw, water_status, light_raw, light_status, vitality_score, message, created_at')
+          .select('id, temperature, humidity, pressure, solution_temperature, water_raw, water_status, light_raw, light_lux, light_status, float_switch_triggered, float_switch_state, device_id, location_id, vitality_score, message, created_at')
+          .eq('device_id', deviceId)
           .order('created_at', ascending: false)
           .limit(1)
           .single();
@@ -208,8 +211,28 @@ class StateCard extends StatelessWidget {
                 Metric(label: '温度', value: fmt(row['temperature']) + ' ℃'),
                 Metric(label: '湿度', value: fmt(row['humidity']) + ' %'),
                 Metric(label: '養液温度', value: fmt(row['solution_temperature']) + ' ℃'),
-                Metric(label: '水位', value: sensorStatusLabel('water', row['water_status']), detail: 'raw: ' + fmtRaw(row['water_raw'])),
-                Metric(label: '照度', value: sensorStatusLabel('light', row['light_status']), detail: 'raw: ' + fmtRaw(row['light_raw'])),
+                Metric(
+                  label: '水位',
+                  value: sensorStatusLabel(
+                    'water',
+                    row['water_status'] ??
+                        (row['float_switch_triggered'] == null
+                            ? null
+                            : row['float_switch_triggered'] == true
+                                ? 'dry'
+                                : 'enough_water'),
+                  ),
+                  detail: row['float_switch_state'] != null
+                      ? 'float: ' + row['float_switch_state'].toString()
+                      : 'raw: ' + fmtRaw(row['water_raw']),
+                ),
+                Metric(
+                  label: '照度',
+                  value: sensorStatusLabel('light', row['light_status']),
+                  detail: row['light_lux'] != null
+                      ? fmt(row['light_lux']) + ' lx'
+                      : 'raw: ' + fmtRaw(row['light_raw']),
+                ),
               ],
             ),
             const SizedBox(height: 12),

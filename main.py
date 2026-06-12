@@ -38,6 +38,15 @@ def init_db():
             "light_raw": "ALTER TABLE sensor_logs ADD COLUMN light_raw INTEGER",
             "light_voltage": "ALTER TABLE sensor_logs ADD COLUMN light_voltage REAL",
             "light_status": "ALTER TABLE sensor_logs ADD COLUMN light_status TEXT",
+            "light_lux": "ALTER TABLE sensor_logs ADD COLUMN light_lux REAL",
+            "device_id": "ALTER TABLE sensor_logs ADD COLUMN device_id TEXT",
+            "location_id": "ALTER TABLE sensor_logs ADD COLUMN location_id TEXT",
+            "float_switch_triggered": (
+                "ALTER TABLE sensor_logs ADD COLUMN float_switch_triggered INTEGER"
+            ),
+            "float_switch_state": (
+                "ALTER TABLE sensor_logs ADD COLUMN float_switch_state TEXT"
+            ),
             "solution_temperature": (
                 "ALTER TABLE sensor_logs ADD COLUMN solution_temperature REAL"
             ),
@@ -61,6 +70,11 @@ class SensorData(BaseModel):
     light_raw: Optional[int] = None
     light_voltage: Optional[float] = None
     light_status: Optional[str] = None
+    light_lux: Optional[float] = None
+    device_id: Optional[str] = None
+    location_id: Optional[str] = None
+    float_switch_triggered: Optional[bool] = None
+    float_switch_state: Optional[str] = None
     solution_temperature: Optional[float] = None
 
 
@@ -74,9 +88,10 @@ def receive_sensor(data: SensorData):
             """INSERT INTO sensor_logs
                (temperature, humidity, pressure, vitality_score, message, source,
                 water_raw, water_voltage, water_status,
-                light_raw, light_voltage, light_status,
+                light_raw, light_voltage, light_status, light_lux,
+                device_id, location_id, float_switch_triggered, float_switch_state,
                 solution_temperature)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 data.temperature,
                 data.humidity,
@@ -90,6 +105,11 @@ def receive_sensor(data: SensorData):
                 data.light_raw,
                 data.light_voltage,
                 data.light_status,
+                data.light_lux,
+                data.device_id,
+                data.location_id,
+                data.float_switch_triggered,
+                data.float_switch_state,
                 data.solution_temperature,
             ),
         )
@@ -102,7 +122,8 @@ def get_latest():
         row = conn.execute("""
             SELECT id, temperature, humidity, pressure, created_at, vitality_score, message, source,
                    water_raw, water_voltage, water_status,
-                   light_raw, light_voltage, light_status,
+                   light_raw, light_voltage, light_status, light_lux,
+                   device_id, location_id, float_switch_triggered, float_switch_state,
                    solution_temperature
             FROM sensor_logs
             ORDER BY id DESC
@@ -127,5 +148,12 @@ def get_latest():
         "light_raw": row[11],
         "light_voltage": row[12],
         "light_status": row[13],
-        "solution_temperature": row[14],
+        "light_lux": row[14],
+        "device_id": row[15],
+        "location_id": row[16],
+        "float_switch_triggered": (
+            None if row[17] is None else bool(row[17])
+        ),
+        "float_switch_state": row[18],
+        "solution_temperature": row[19],
     }

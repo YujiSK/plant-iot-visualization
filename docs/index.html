@@ -358,8 +358,7 @@
         solution_temperature: 24.5,
         water_raw: 2100, water_status: "enough_water",
         water_voltage: 1.692,
-        light_raw: 1600, light_status: "bright",
-        light_voltage: 1.289,
+        light_lux: 3500, light_status: "bright",
         vitality_score: 92, message: "安定しています",
       },
       warning: {
@@ -367,8 +366,7 @@
         solution_temperature: 28.0,
         water_raw: 900, water_status: "wet",
         water_voltage: 0.725,
-        light_raw: 850, light_status: "dim",
-        light_voltage: 0.685,
+        light_lux: 600, light_status: "dim",
         vitality_score: 68, message: "やや注意が必要です",
       },
       danger: {
@@ -376,13 +374,13 @@
         solution_temperature: 32.5,
         water_raw: 0, water_status: "dry",
         water_voltage: 0.0,
-        light_raw: 300, light_status: "dark",
-        light_voltage: 0.242,
+        light_lux: 40, light_status: "dark",
         vitality_score: 40, message: "乾燥しています",
       },
     };
 
     let demoMode = null;
+    const DEVICE_ID = new URLSearchParams(window.location.search).get("device") || "raspi";
 
     function theme(score) {
       if (score >= 80) return THEMES.good;
@@ -425,6 +423,13 @@
         ...data,
         water_raw: data.water_raw ?? data.water_level_raw,
         water_voltage: data.water_voltage ?? data.water_level_voltage,
+        water_status:
+          data.water_status ??
+          (data.float_switch_triggered == null
+            ? null
+            : data.float_switch_triggered
+              ? "dry"
+              : "enough_water"),
         source: data.source ?? data.sensor_type,
       };
     }
@@ -646,7 +651,7 @@
           <div class="sensor-tile">
             <div class="sensor-value status-value" id="light-status"></div>
             <div class="sensor-label">照度</div>
-            <div class="sensor-detail">raw: <span id="light-raw"></span></div>
+            <div class="sensor-detail" id="light-detail"></div>
           </div>
         </div>
         <div class="message" id="msg-box"></div>
@@ -661,7 +666,8 @@
       document.getElementById("water-status").textContent = sensorStatusLabel("water", d.water_status);
       document.getElementById("water-raw").textContent    = fmtRaw(d.water_raw);
       document.getElementById("light-status").textContent = sensorStatusLabel("light", d.light_status);
-      document.getElementById("light-raw").textContent    = fmtRaw(d.light_raw);
+      document.getElementById("light-detail").textContent =
+        d.light_lux != null ? `${fmt(d.light_lux)} lx` : `raw: ${fmtRaw(d.light_raw)}`;
       renderDoctor(d, advice);
 
       const footer = document.getElementById("footer");
@@ -715,7 +721,8 @@
       try {
         const res = await fetch(
           `${BASE}/rest/v1/sensor_logs` +
-          `?select=temperature,humidity,solution_temperature,water_raw,water_voltage,water_status,light_raw,light_voltage,light_status,vitality_score,message,created_at` +
+          `?select=temperature,humidity,solution_temperature,water_raw,water_voltage,water_status,light_raw,light_voltage,light_lux,light_status,float_switch_triggered,float_switch_state,device_id,location_id,vitality_score,message,created_at` +
+          `&device_id=eq.${encodeURIComponent(DEVICE_ID)}` +
           `&order=created_at.desc&limit=1`,
           { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
         );

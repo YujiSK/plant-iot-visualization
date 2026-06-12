@@ -1,28 +1,32 @@
 # Plant IoT
 
-Raspberry Pi plant monitor.
+Two-device Raspberry Pi plant monitor.
 
-The project started with a Sense HAT-based prototype. The current hardware
-configuration uses DHT11 and MCP3204/MCP3208 ADC wiring instead.
+Both Raspberry Pis use this repository but run different sensor entry points.
 
 ## Runtime
 
 - `main.py`: FastAPI API. Stores sensor readings in local SQLite.
-- `send_sensor.py`: Reads DHT11 temperature/humidity, DS18B20 solution temperature, and MCP3204/MCP3208 ADC values, then posts each reading to the local API and Supabase.
+- `send_sensor_raspi.py`: Primary device. Reads DHT11, DS18B20, water level CH0, and CdS CH1.
+- `send_sensor_raspberrypi2.py`: Secondary device. Reads BH1750, DS18B20, and the GPIO17 float switch.
+- `send_sensor.py`: Backward-compatible wrapper for `send_sensor_raspi.py`.
 - `docs/index.html`: Static GitHub Pages UI. Reads the latest row from Supabase.
 
-## Current wiring
+## Device layout
 
-- DHT11 `DATA` -> Raspberry Pi GPIO17 / physical pin 11, with 10kohm pull-up to 3.3V.
-- DS18B20 `DATA` -> Raspberry Pi GPIO4 / physical pin 7, with 4.7kohm pull-up to 3.3V.
-- MCP3204/MCP3208 `CH0` -> water level sensor `SIG`.
-- MCP3204/MCP3208 `CH1` -> light sensor `AO`.
-- MCP3204/MCP3208 uses SPI0 CE0:
-  - `CLK` -> GPIO11 SCLK / physical pin 23
-  - `DOUT` -> GPIO9 MISO / physical pin 21
-  - `DIN` -> GPIO10 MOSI / physical pin 19
-  - `CS/SHDN` -> GPIO8 CE0 / physical pin 24
-- ADC `VDD` and `VREF` are 3.3V. Do not feed 5V into ADC inputs.
+### raspi / location-a
+
+- DHT11: GPIO17
+- DS18B20: GPIO4
+- Water level sensor: MCP3204/MCP3208 CH0
+- CdS light sensor: MCP3204/MCP3208 CH1
+- LED: GPIO23 through a current-limiting resistor
+
+### raspberrypi2 / location-b
+
+- BH1750: I2C1 GPIO2/GPIO3, address `0x23`
+- DS18B20: GPIO4
+- Active-low float switch: GPIO17 to GND
 
 The complete wiring reference is available in
 [`docs/WIRING.md`](docs/WIRING.md). The diagram is generated from
@@ -53,6 +57,13 @@ SUPABASE_SENSOR_KEY=your-private-service-role-or-sensor-write-key
 SENSOR_INTERVAL_SECONDS=300
 DHT_RETRIES=8
 DS18B20_SENSOR_ID=28-your-sensor-id
+DEVICE_ID=raspi
+LOCATION_ID=location-a
+BH1750_I2C_BUS=1
+BH1750_ADDRESS=0x23
+FLOAT_SWITCH_GPIO=17
+LIGHT_DARK_LUX=100
+LIGHT_BRIGHT_LUX=1000
 MANUAL_SEND_MIN_INTERVAL_SECONDS=60
 ```
 
@@ -62,6 +73,8 @@ current DHT11 runtime intentionally does not apply offset correction.
 Enable 1-Wire for the DS18B20 by adding
 `dtoverlay=w1-gpio,gpiopin=4` to `/boot/firmware/config.txt`, then reboot.
 `DS18B20_SENSOR_ID` is optional when only one DS18B20 is connected.
+
+On `raspberrypi2`, enable both I2C and 1-Wire before starting the service.
 
 Generate the static Pages config:
 
@@ -74,6 +87,16 @@ python scripts/generate_pages_config.py
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000
 python send_sensor.py
+```
+
+Use the device-specific entry point in systemd:
+
+```bash
+# raspi
+python send_sensor_raspi.py
+
+# raspberrypi2
+python send_sensor_raspberrypi2.py
 ```
 
 Trigger one manual reading without restarting the service:
@@ -98,10 +121,19 @@ matching migrations before the additional sensor fields can be stored there:
 ```bash
 supabase_sensor_logs_adc_migration.sql
 supabase_solution_temperature_migration.sql
+supabase_light_lux_migration.sql
+supabase_multi_device_migration.sql
 ```
 
 Until that migration is applied, `send_sensor.py` retries Supabase writes
 without the ADC fields so temperature/humidity logging can continue.
+
+GitHub Pages selects a device with a query parameter:
+
+```text
+?device=raspi
+?device=raspberrypi2
+```
 
 ## Supabase security
 

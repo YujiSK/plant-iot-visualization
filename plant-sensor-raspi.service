@@ -1,5 +1,5 @@
 [Unit]
-Description=Plant IoT primary Raspberry Pi sensor sender (legacy unit name)
+Description=Plant IoT primary Raspberry Pi sensor sender
 After=network.target plant-api.service
 Requires=plant-api.service
 
@@ -8,10 +8,11 @@ User=pi
 WorkingDirectory=/home/pi/plant-iot
 EnvironmentFile=/home/pi/plant-iot/.env
 Environment="PATH=/home/pi/plant-iot/.venv/bin"
-ExecStart=/home/pi/plant-iot/.venv/bin/python /home/pi/plant-iot/send_sensor.py
+ExecStart=/home/pi/plant-iot/.venv/bin/python /home/pi/plant-iot/send_sensor_raspi.py
 ExecReload=/bin/kill -USR1 $MAINPID
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+

@@ -337,3 +337,59 @@
 - 同期間の水位ADCは全記録が0だった。
 - この回は高温よりも、養液不足、フェルトの吸水不足、根との接触不良による給水ストレスの可能性が高い。
 - 正確な変更日時、枯死確認日時、ADC値0が実水位を正しく表していたかは未確認。
+
+### 照度センサーのBH1750移行準備
+
+#### 変更したこと
+
+- 旧フォトセルとMCP3208 CH1による照度取得を、BH1750のI2C照度取得へ変更した。
+- BH1750高分解能モードを読み取る`bh1750.py`と、実機確認用`debug_bh1750.py`を追加した。
+- `send_sensor.py`はBH1750のlux値を`light_lux`として送信し、旧`light_raw`と`light_voltage`はNULLで保存する構成にした。
+- BH1750が未接続または読み取り失敗の場合も、他センサーの送信は継続する。
+- SQLiteへNULL許可の`light_lux`自動追加を実装した。
+- Supabaseへ`add_bh1750_light_lux` migrationを適用し、`light_lux numeric NULL`を確認した。
+- GitHub PagesとFlutterをlux表示へ変更し、過去ログは旧raw値を表示する互換処理を残した。
+- 配線資料をBH1750のGPIO2/SDA、GPIO3/SCL、標準アドレス`0x23`構成へ更新した。
+- MCP3208 CH1は未使用とした。
+
+#### 確認結果
+
+- `test_vitality.py`、`test_ds18b20.py`、`test_bh1750.py`の計10テストが成功した。
+- Python対象ファイルの構文チェックが成功した。
+- Graphvizで`docs/wiring.svg`を再生成し、I2C配線と既存配線の重なりを目視確認した。
+- Supabase security advisorは指摘なし。
+- performance advisorは既存の未使用インデックス`care_logs_sensor_log_id_idx`のみで、今回変更による新規指摘はない。
+
+#### 未実施
+
+- BH1750の実配線、Raspberry PiのI2C有効化、`i2cdetect`、実lux値の取得は未実施。
+- 実配線前のため、Piへのコード反映とsystemdサービス再起動は行っていない。
+
+### 2台のRaspberry Piによる分散計測
+
+#### 構成
+
+- `raspi`はDHT11、DS18B20、水位センサーCH0、CdSセルCH1、LEDを担当する。
+- `raspberrypi2`はBH1750、DS18B20、GPIO17フロートスイッチを担当する。
+- 同じリポジトリ内に`send_sensor_raspi.py`と`send_sensor_raspberrypi2.py`を用意した。
+- systemd serviceも`plant-sensor-raspi.service`と`plant-sensor-raspberrypi2.service`へ分離した。
+- Supabaseへ`device_id`、`location_id`、`float_switch_triggered`、`float_switch_state`を追加した。
+- 既存ログ互換のため新規DB列はすべてNULL許可とした。
+
+#### raspberrypi2の実機確認
+
+- I2C1とGPIO4の1-Wireを有効化した。
+- GPIO17は内部プルアップ状態で、フロート操作に応じた`hi`と`lo`の切り替わりを15秒間の実測で確認した。
+- BH1750はI2Cバス上で未検出。`0x23`、`0x5c`を含め応答なし。
+- DS18B20は1-Wireマスターが生成されたが、`28-*`デバイスは未検出。
+- GPIO2/SDAとGPIO3/SCLはI2C機能かつHigh、GPIO4もHighであるため、OS側機能は有効。
+- BH1750とDS18B20は電源、GND、信号線、プルアップ抵抗、端子順を再確認する必要がある。
+- cloud-initがホスト名を`raspi2`へ戻していたため、`preserve_hostname: true`と`hostname: raspberrypi2`へ修正した。
+
+#### 検証
+
+- Python構文チェック成功。
+- SQLiteの18列INSERTをインメモリDBで確認した。
+- Pythonテスト15件成功。
+- GitHub PagesのJavaScript構文チェック成功。
+- Supabase migration適用後、追加列の型とNULL許可を確認した。

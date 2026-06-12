@@ -2,9 +2,9 @@
 
 ## プロジェクト概要
 
-このプロジェクトは、Raspberry Pi + DHT11 + MCP3204/MCP3208 ADC + Supabase + GitHub Pages を使った、室内水耕栽培環境の可視化および管理作業自動化システムです。
+このプロジェクトは、2台のRaspberry Piと複数センサー、Supabase、GitHub Pagesを使った、室内水耕栽培環境の分散計測・可視化システムです。
 
-最初は Sense HAT を使って開始したが、現在の実行構成は DHT11 温湿度、MCP3204/MCP3208 経由の水位センサー CH0、照度センサー CH1、FastAPI、SQLite、Supabase、GitHub Pages、systemd 常駐化、`vitality.py` による状態スコア計算です。今後は LED RGB、ブザー、USB シリアル JSON 連携などを追加する可能性があります。
+`raspi`はDHT11、DS18B20、水位センサー、CdSセル、LEDを担当します。`raspberrypi2`はBH1750、DS18B20、フロートスイッチを担当します。両機は同じリポジトリを使用し、機体別の送信ファイルとsystemd serviceで同じSupabaseへ送信します。
 
 ## 恒久ルール
 
