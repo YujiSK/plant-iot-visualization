@@ -38,6 +38,8 @@ def request_manual_send(signum, frame):
 
 
 def light_status(lux):
+    if lux is None:
+        return None
     if lux < LIGHT_DARK_LUX:
         return "dark"
     if lux >= LIGHT_BRIGHT_LUX:
@@ -49,10 +51,13 @@ def calculate_remote_status(solution_temperature, light_state, float_triggered):
     score = 100
     messages = []
 
-    if float_triggered:
+    if float_triggered is True:
         score -= 60
         messages.append("水位低下を検出しました")
-    if solution_temperature < 15 or solution_temperature >= 30:
+    if (
+        solution_temperature is not None
+        and (solution_temperature < 15 or solution_temperature >= 30)
+    ):
         score -= 20
         messages.append("養液温度を確認してください")
     if light_state == "dark":
@@ -62,13 +67,30 @@ def calculate_remote_status(solution_temperature, light_state, float_triggered):
     return max(0, score), " / ".join(messages) if messages else "安定しています"
 
 
+def read_optional(label, reader):
+    try:
+        return reader()
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        print(f"{label} unavailable: {exc}", flush=True)
+        return None
+
+
 def build_payload():
-    solution_temperature = read_temperature(sensor_id=DS18B20_SENSOR_ID)
-    light_lux = read_lux(
-        bus_number=BH1750_I2C_BUS,
-        address=BH1750_ADDRESS,
+    solution_temperature = read_optional(
+        "DS18B20",
+        lambda: read_temperature(sensor_id=DS18B20_SENSOR_ID),
     )
-    float_triggered = read_triggered(gpio=FLOAT_SWITCH_GPIO)
+    light_lux = read_optional(
+        "BH1750",
+        lambda: read_lux(
+            bus_number=BH1750_I2C_BUS,
+            address=BH1750_ADDRESS,
+        ),
+    )
+    float_triggered = read_optional(
+        "float switch",
+        lambda: read_triggered(gpio=FLOAT_SWITCH_GPIO),
+    )
     current_light_status = light_status(light_lux)
     vitality_score, message = calculate_remote_status(
         solution_temperature,
@@ -84,7 +106,13 @@ def build_payload():
         "light_lux": light_lux,
         "light_status": current_light_status,
         "float_switch_triggered": float_triggered,
-        "float_switch_state": "low_water" if float_triggered else "water_ok",
+        "float_switch_state": (
+            None
+            if float_triggered is None
+            else "low_water"
+            if float_triggered
+            else "water_ok"
+        ),
         "vitality_score": vitality_score,
         "message": message,
     }

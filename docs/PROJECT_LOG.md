@@ -394,3 +394,6 @@
 - GitHub PagesのJavaScript構文チェック成功。
 - Supabase migration適用後、追加列の型とNULL許可を確認した。
 - `raspberrypi2`ではDHT11/SPIを使用しないため、`lgpio`を除外した`requirements-raspberrypi2.txt`を追加した。
+- `raspberrypi2`のDS18B20 `28-000000cc1ad1`を検出し、`26.750℃`を取得した。
+- GPIO17フロートはPythonコードでも`triggered=True / low_water`を取得した。
+- BH1750だけ未検出でもDS18B20とフロートの送信を継続できるよう、各センサーを独立して読み取る構成へ変更した。

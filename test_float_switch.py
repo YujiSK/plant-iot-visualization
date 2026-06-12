@@ -1,7 +1,7 @@
 import unittest
 
 from float_switch import majority_triggered
-from send_sensor_raspberrypi2 import calculate_remote_status
+from send_sensor_raspberrypi2 import calculate_remote_status, read_optional
 
 
 class FloatSwitchTest(unittest.TestCase):
@@ -25,6 +25,12 @@ class FloatSwitchTest(unittest.TestCase):
             calculate_remote_status(24.0, "bright", False),
             (100, "安定しています"),
         )
+
+    def test_optional_sensor_failure_returns_none(self):
+        def fail():
+            raise OSError("not connected")
+
+        self.assertIsNone(read_optional("test", fail))
 
 
 if __name__ == "__main__":
