@@ -130,6 +130,7 @@ supabase_sensor_logs_adc_migration.sql
 supabase_solution_temperature_migration.sql
 supabase_light_lux_migration.sql
 supabase_multi_device_migration.sql
+supabase_multi_device_nullable_ambient_migration.sql
 ```
 
 Until that migration is applied, `send_sensor.py` retries Supabase writes

@@ -1,7 +1,11 @@
 import unittest
 
 from float_switch import majority_triggered
-from send_sensor_raspberrypi2 import calculate_remote_status, read_optional
+from send_sensor_raspberrypi2 import (
+    calculate_remote_status,
+    read_optional,
+    read_with_retries,
+)
 
 
 class FloatSwitchTest(unittest.TestCase):
@@ -31,6 +35,20 @@ class FloatSwitchTest(unittest.TestCase):
             raise OSError("not connected")
 
         self.assertIsNone(read_optional("test", fail))
+
+    def test_retry_recovers(self):
+        values = iter([OSError("crc"), 26.5])
+
+        def sometimes_fails():
+            value = next(values)
+            if isinstance(value, Exception):
+                raise value
+            return value
+
+        self.assertEqual(
+            read_with_retries("test", sometimes_fails, interval_seconds=0),
+            26.5,
+        )
 
 
 if __name__ == "__main__":

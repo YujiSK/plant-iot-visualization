@@ -397,3 +397,5 @@
 - `raspberrypi2`のDS18B20 `28-000000cc1ad1`を検出し、`26.750℃`を取得した。
 - GPIO17フロートはPythonコードでも`triggered=True / low_water`を取得した。
 - BH1750だけ未検出でもDS18B20とフロートの送信を継続できるよう、各センサーを独立して読み取る構成へ変更した。
+- DHTを持たない2号機のログを保存するため、Supabaseの`temperature`と`humidity`をNULL許可へ変更した。既存値は変更していない。
+- DS18B20の一時的なCRC失敗に対して3回まで再試行するようにした。

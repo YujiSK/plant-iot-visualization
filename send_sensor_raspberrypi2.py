@@ -75,8 +75,18 @@ def read_optional(label, reader):
         return None
 
 
+def read_with_retries(label, reader, attempts=3, interval_seconds=0.25):
+    for attempt in range(1, max(1, attempts) + 1):
+        value = read_optional(label, reader)
+        if value is not None:
+            return value
+        if attempt < attempts:
+            time.sleep(max(0.0, interval_seconds))
+    return None
+
+
 def build_payload():
-    solution_temperature = read_optional(
+    solution_temperature = read_with_retries(
         "DS18B20",
         lambda: read_temperature(sensor_id=DS18B20_SENSOR_ID),
     )
@@ -133,6 +143,11 @@ def send_to_supabase(payload):
         },
         timeout=10,
     )
+    if not response.ok:
+        print(
+            f"Supabase error status={response.status_code} body={response.text}",
+            flush=True,
+        )
     response.raise_for_status()
     print(
         "sent: "
