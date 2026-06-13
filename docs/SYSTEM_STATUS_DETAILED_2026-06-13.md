@@ -58,7 +58,7 @@
 Supabase
 ├─ sensor_logs
 ├─ care_logs
-└─ GitHub Pages / Flutterから参照
+└─ GitHub Pagesから参照
 ```
 
 機体は次の識別子で分離されています。
@@ -481,22 +481,6 @@ raspberrypi2   -> Supabase 201
 ```
 
 GitHub Pagesでは、最新センサー値、vitality、原因候補、推奨対応を表示します。
-
-### 12.2 Flutter
-
-ビルド時の`DEVICE_ID`で対象機体を指定します。
-
-```bash
---dart-define=DEVICE_ID=raspi
-```
-
-または:
-
-```bash
---dart-define=DEVICE_ID=raspberrypi2
-```
-
-Flutter SDKが利用できる環境での最終実機表示確認は未完了です。
 
 ## 13. 実施済みの検証
 

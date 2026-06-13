@@ -76,8 +76,8 @@
 
 ### 完了したこと
 
-- Flutter管理支援アプリの最小実装を追加
-- sensor_logs 最新1件を表示するFlutter画面を追加
+- 管理支援UIの最小実装を追加
+- sensor_logs 最新1件を表示する画面を追加
 - care_logs に watered / moved / checked / memo を記録する実装を追加
 - care_logs 作成用SQLを supabase_care_logs.sql として追加
 
@@ -90,7 +90,7 @@
 
 ### 注意点
 
-- Raspberry Pi環境にはFlutter/Dart CLIがないため、Flutterのビルド検証は未実施
+- Raspberry Pi環境には対応するUI SDKがないため、画面側のビルド検証は未実施
 - supabase_care_logs.sql はまだSupabaseへ適用していない
 - 公開クライアントにはanon keyのみを使い、service_role keyは置かない
 
@@ -156,12 +156,12 @@
 - `docs/index.html` のGitHub Pages表示から気圧タイルを外し、水位と照度を表示するようにした。
 - GitHub Pages のSupabase取得対象を `pressure` から `water_raw` / `water_status` / `light_raw` / `light_status` へ切り替えた。
 - デモ表示も DHT11 + MCP3204/MCP3208 の現構成に合わせた。
-- Flutter管理画面の最新状態カードも気圧ではなく水位・照度を表示するようにした。
+- 管理画面の最新状態カードも気圧ではなく水位・照度を表示するようにした。
 - `docs/NEXT_ACTIONS.md` から完了済みのGitHub Pages水位・照度表示追加を外した。
 
 #### 注意点
 
-- Flutter SDK はRaspberry Pi環境にないため、Flutter側のビルド検証は未実施。
+- 対応するUI SDK はRaspberry Pi環境にないため、画面側のビルド検証は未実施。
 - `care_logs` は既存スキーマ維持のため、記録時スナップショットは従来通り温度・湿度・気圧互換カラム中心のまま。
 - `/etc/systemd/system/plant-sensor.service` にリポジトリ内のservice定義を反映し、`daemon-reload` 済み。
 - `systemctl status plant-sensor.service --no-pager -l` で表示名が `Plant IoT DHT11 and ADC Sensor Sender` になったことを確認した。
@@ -252,7 +252,7 @@
 - Linux 1-Wire sysfsからDS18B20を読み取る `ds18b20.py` を追加した。
 - `send_sensor.py` のDHT11をGPIO17へ変更し、DS18B20の養液温度取得を追加した。
 - ローカルSQLiteとSupabaseの `sensor_logs` にNULL許可の `solution_temperature` を追加した。
-- GitHub PagesとFlutterへ養液温度表示を追加した。
+- GitHub Pagesと管理画面へ養液温度表示を追加した。
 - 配線図と `docs/WIRING.md` をDHT11 GPIO17 / DS18B20 GPIO4構成へ更新した。
 - Supabase migration `add_solution_temperature` を適用し、`solution_temperature numeric NULL` を確認した。
 
@@ -348,7 +348,7 @@
 - BH1750が未接続または読み取り失敗の場合も、他センサーの送信は継続する。
 - SQLiteへNULL許可の`light_lux`自動追加を実装した。
 - Supabaseへ`add_bh1750_light_lux` migrationを適用し、`light_lux numeric NULL`を確認した。
-- GitHub PagesとFlutterをlux表示へ変更し、過去ログは旧raw値を表示する互換処理を残した。
+- GitHub Pagesと管理画面をlux表示へ変更し、過去ログは旧raw値を表示する互換処理を残した。
 - 配線資料をBH1750のGPIO2/SDA、GPIO3/SCL、標準アドレス`0x23`構成へ更新した。
 - MCP3208 CH1は未使用とした。
 
@@ -428,7 +428,7 @@
 
 - `README.md`の環境変数例、実行方法、systemd手動送信手順を2台構成に合わせて更新した。
 - `AGENTS.md`の確認コマンドを両デバイスと現行センサーモジュールに対応させた。
-- Flutterアプリの起動例へ`DEVICE_ID`を追加した。
+- 管理アプリの起動例へ`DEVICE_ID`を追加した。
 - 2026年6月1日のADC資料を履歴資料として明示し、現行状態と配線資料へのリンクを追加した。
 
 ### バジル水耕栽培のvitality評価強化
@@ -530,14 +530,14 @@
 
 ### Slack中心の管理支援フロー
 
-- LINE、Slack、Flutterを比較し、研究期間中はSlackを実験基盤、Flutterを最終発展形として扱う方針を決定した。
-- Flutterは自由度が高い一方、現段階ではUIと通知基盤の開発工数が大きいため、まずSlackで研究仮説の検証と運用データ収集を優先する。
+- LINE、Slack、専用アプリを比較し、研究期間中はSlackを実験基盤、専用アプリを最終発展形として扱う方針を決定した。
+- 専用アプリは自由度が高い一方、現段階ではUIと通知基盤の開発工数が大きいため、まずSlackで研究仮説の検証と運用データ収集を優先する。
 - SlackのBot・API・画像投稿・チャンネル分離・通知機能を利用し、短い実験サイクルで管理支援フローを検証する。
-- Phase 1を異常通知、Phase 2を回復検知と`care_logs`生成、Phase 3を写真観察支援、Phase 4を再撮影支援、Phase 5を観察品質評価、Phase 6をFlutter移植とした。
+- Phase 1を異常通知、Phase 2を回復検知と`care_logs`生成、Phase 3を写真観察支援、Phase 4を再撮影支援、Phase 5を観察品質評価、Phase 6を専用アプリ化の再評価とした。
 - Slackチャンネル案として、異常通知用`#plant-alert`、写真観察用`#plant-observation`、分析共有用`#plant-analysis`を設定した。
 - `low_water`から利用者対応、`water_ok`回復、`care_logs`生成までを記録し、異常発見から回復までの管理行動を評価対象とする。
-- Slackで有効性を確認できたPush通知、写真投稿、`care_logs`作成、日次分析閲覧、AI観察支援などをFlutterへ移植する方針とした。
-- 優先順位を、基盤運用、Slack通知と対応記録、AI観察支援、Flutter移植を含む将来拡張の順に更新した。
+- Slackで有効性を確認できたPush通知、写真投稿、`care_logs`作成、日次分析閲覧、AI観察支援などを専用アプリへ移植する方針とした。
+- 優先順位を、基盤運用、Slack通知と対応記録、AI観察支援、専用アプリ化を含む将来拡張の順に更新した。
 
 ### プロジェクト全体時系列の整理
 
@@ -552,3 +552,11 @@
 - `device_id IS NULL`の行に、2号機固有の`light_lux`、`float_switch_state`、`float_switch_triggered`または2号機を示す`source`を持つ行は0件だった。
 - 2号機のログは`device_id=raspberrypi2`かつ`location_id=location-b`の行だけである。
 - 今後の分析では、`device_id IS NULL`を「機体不明」とせず、1号機の履歴として正規化する。既存DB行は監査性を保つため更新しない。
+
+### 未使用管理支援UI試作の削除
+
+- 管理支援UI試作ディレクトリは2026-05-18に作成した最小試作だったが、ビルド・配備・実運用されておらず、GitHub Pagesやセンサー送信にも使用していなかった。
+- 現行システムの構成要素と誤解されることを避けるため、この試作コードをリポジトリから削除した。
+- 試作した事実は、Git履歴、`PROJECT_LOG.md`、プロジェクト時系列へ残す。
+- GitHub Pagesを現在の可視化手段、Slackを今後の実験基盤として明確化した。
+- 専用アプリ化は確定した移植計画とせず、Slackで機能の有効性を確認した後に必要性と技術選定を再評価する方針へ変更した。

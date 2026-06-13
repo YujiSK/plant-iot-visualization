@@ -1,6 +1,6 @@
--- care_logs table for Flutter management-support app.
+-- care_logs table for management-support app.
 -- Public clients must use only the anon public key with RLS.
--- Never place service_role keys in Flutter or GitHub Pages.
+-- Never place service_role keys in client apps or GitHub Pages.
 
 create table if not exists public.care_logs (
   id uuid primary key default gen_random_uuid(),

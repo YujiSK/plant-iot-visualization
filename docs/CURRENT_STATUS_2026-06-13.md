@@ -25,7 +25,7 @@
 
 両機
 └─ Supabase
-   └─ GitHub Pages / Flutterで表示
+   └─ GitHub Pagesで表示
 ```
 
 データは`device_id`と`location_id`で機体・設置場所を識別します。
@@ -214,20 +214,6 @@ URLクエリで表示する機体を選びます。
 ?device=raspberrypi2
 ```
 
-### Flutter
-
-ビルド時の`DEVICE_ID`で表示機体を指定します。
-
-```bash
---dart-define=DEVICE_ID=raspi
-```
-
-または:
-
-```bash
---dart-define=DEVICE_ID=raspberrypi2
-```
-
 ## 7. テスト状況
 
 - Python構文チェック: 成功
@@ -244,9 +230,8 @@ URLクエリで表示する機体を選びます。
 1. フロートスイッチの最終設置方向を確定する
 2. `LOW = 水不足`になることを現物で確認する
 3. GitHub Pagesの2機体表示をブラウザで確認する
-4. Flutterの2機体表示を確認する
-5. `raspi`の旧service名を`plant-sensor-raspi.service`へ整理する
-6. 植え替え、給水、フェルト交換などを`care_logs`へ記録する画面を整備する
+4. `raspi`の旧service名を`plant-sensor-raspi.service`へ整理する
+5. 植え替え、給水、フェルト交換などを`care_logs`へ記録する方法を整備する
 
 ## 9. 関連ファイル
 
