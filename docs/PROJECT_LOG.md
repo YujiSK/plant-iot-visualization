@@ -544,3 +544,11 @@
 - 2026-04-25のSense HAT試作開始から、Supabase・GitHub Pages、固定補正、DHT11・ADC移行、養液温度、2台構成、実栽培設置、発芽確認、旧データ復元、研究方針転換までを時系列で整理した。
 - 技術変更だけでなく、約4回の栽培失敗、記録不足、補正処理の問題、写真とセンサーの観測差が研究方針へ与えた影響を対応づけた。
 - 冒頭の全体図、フェーズ別一覧、日付別詳細、現在の到達点、現在の研究フローを`docs/PROJECT_TIMELINE_2026-06.md`へ記録した。
+
+### Supabaseログの機体判定ルール
+
+- `sensor_logs.device_id IS NULL`の既存5,733件は、すべて1号機`raspi`のログとして扱う。
+- 内訳は、旧Sense HATの`source=sensor`が2,767件、DHT11とADCの`source=dht11-mcp3204`が2,683件、DS18B20追加後の`source=dht11-ds18b20-mcp3208`が283件だった。
+- `device_id IS NULL`の行に、2号機固有の`light_lux`、`float_switch_state`、`float_switch_triggered`または2号機を示す`source`を持つ行は0件だった。
+- 2号機のログは`device_id=raspberrypi2`かつ`location_id=location-b`の行だけである。
+- 今後の分析では、`device_id IS NULL`を「機体不明」とせず、1号機の履歴として正規化する。既存DB行は監査性を保つため更新しない。
