@@ -56,13 +56,31 @@
 
 ## 確認コマンド
 
+共通・ローカル確認:
+
 ```bash
-python -m py_compile main.py send_sensor.py vitality.py
+python -m py_compile main.py send_sensor.py send_sensor_raspi.py send_sensor_raspberrypi2.py bh1750.py ds18b20.py float_switch.py vitality.py
+python -m unittest test_vitality.py test_ds18b20.py test_bh1750.py test_float_switch.py
+git status --short
+git diff
+```
+
+`raspi` 側:
+
+```bash
 curl http://localhost:8000/latest
 systemctl status plant-api.service --no-pager -l
 systemctl status plant-sensor.service --no-pager -l
 journalctl -u plant-api.service -n 50 --no-pager -l
 journalctl -u plant-sensor.service -n 80 --no-pager -l
-git status --short
-git diff
+```
+
+`raspberrypi2` 側:
+
+```bash
+systemctl status plant-sensor-raspberrypi2.service --no-pager -l
+journalctl -u plant-sensor-raspberrypi2.service -n 80 --no-pager -l
+python debug_bh1750.py --count 3
+python debug_ds18b20.py --count 1
+python debug_float_switch.py
 ```

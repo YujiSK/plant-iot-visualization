@@ -1,12 +1,14 @@
 # ADC / Sensor Status Summary - 2026-06-01
 
+> **履歴資料:** この文書は2026年6月1日時点のADC調査記録です。GPIO割り当てと未実施項目は当時の内容であり、現行構成ではありません。現在はDHT11をGPIO17、DS18B20をGPIO4に接続し、2台のRaspberry Piへ役割を分離しています。現行状態は [CURRENT_STATUS_2026-06-13.md](CURRENT_STATUS_2026-06-13.md)、配線は [WIRING.md](WIRING.md) を参照してください。
+
 ## 概要
 
 Raspberry Pi + MCP3204/MCP3208 ADCで、水位センサ、照度センサ、DHT11温湿度センサの実機確認を行った。
 
 詳細ログは `docs/ADC_DEBUG_SESSION_2026-06-01.md` に記録済み。
 
-## 現在の結論
+## 当時の結論
 
 - SPIは有効化済みで、`/dev/spidev0.0` と `/dev/spidev0.1` がADCスクリプトから見えている。
 - ADCは複数チャンネルで値を読めており、SPI/ADC全体は動作している。
@@ -14,7 +16,7 @@ Raspberry Pi + MCP3204/MCP3208 ADCで、水位センサ、照度センサ、DHT1
 - CH1の照度センサは、明るい状態と指で覆った暗状態で明確に値が変わる。
 - DHT11はリトライが多いが、温湿度取得には成功している。
 
-## 配線メモ
+## 当時の配線メモ
 
 ### ADC
 
@@ -38,6 +40,8 @@ Raspberry Pi + MCP3204/MCP3208 ADCで、水位センサ、照度センサ、DHT1
 - DHT11 `GND` -> GND
 - DHT11 `DATA` -> GPIO4
 - DHT11 `DATA` -> 10kohm -> 3.3V
+
+上記DHT11のGPIO4は当時の配線です。現行構成ではDHT11はGPIO17、GPIO4はDS18B20に使用しています。
 
 ## 水位センサ CH0
 
@@ -119,7 +123,7 @@ Raspberry Pi + MCP3204/MCP3208 ADCで、水位センサ、照度センサ、DHT1
 - 5V駆動センサを試す場合は、必ず `Signal-GND` 電圧をテスターで測り、3.3V以下であることを確認してからADCへ接続する。
 - `docs/config.js` はGitHub Pages公開対象なので、秘密情報を入れない。
 
-## 次の実装方針
+## 当時の実装方針
 
 1. ADC読み取り処理を `send_sensor.py` へ統合する前に、ADC用の小さな読み取り関数を分離する。
 2. CH0を `water_raw` / `water_voltage` / `water_status` として扱う。
@@ -127,10 +131,12 @@ Raspberry Pi + MCP3204/MCP3208 ADCで、水位センサ、照度センサ、DHT1
 4. raw値はノイズ対策として複数回読み、中央値または平均を使う。
 5. ローカルAPI、SQLite、Supabaseへ保存する場合はDBスキーマ変更が必要なため、事前に移行方針を決める。
 
-## まだ未実施
+## 当時未実施だった項目
 
 - ADC値の本番送信統合。
 - SQLite / Supabase スキーマへの水位・照度カラム追加。
 - GitHub Pages表示への水位・照度追加。
 - DHT11の本番統合。
 - systemd serviceへの反映。
+
+これらのセンサー統合、DB保存、画面表示、systemd常駐化は現行構成で実施済みです。

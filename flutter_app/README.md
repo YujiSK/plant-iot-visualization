@@ -14,12 +14,22 @@ Use only the Supabase anon public key in this app. Do not place SUPABASE_SENSOR_
 
 Run with dart defines:
 
-flutter run --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-public-key
+```bash
+# raspi を表示
+flutter run --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-public-key --dart-define=DEVICE_ID=raspi
+
+# raspberrypi2 を表示
+flutter run --dart-define=SUPABASE_URL=https://your-project.supabase.co --dart-define=SUPABASE_ANON_KEY=your-anon-public-key --dart-define=DEVICE_ID=raspberrypi2
+```
+
+`DEVICE_ID`で表示対象のRaspberry Piを選択する。
 
 If this directory was not created by flutter create, run once:
 
+```bash
 cd flutter_app
 flutter create .
 flutter pub get
+```
 
 Then keep lib/main.dart and pubspec.yaml from this implementation.

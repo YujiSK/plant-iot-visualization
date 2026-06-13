@@ -23,7 +23,7 @@ import spidev
 from dotenv import load_dotenv
 
 from ds18b20 import read_temperature as read_ds18b20_temperature
-from vitality import calculate_vitality, generate_message
+from vitality import calculate_basil_vitality
 
 URL = "http://localhost:8000/sensor"
 LATEST_URL = "http://localhost:8000/latest"
@@ -216,9 +216,6 @@ def read_sensor_payload(dht, spi):
     light_raw = read_adc_median(spi, 1)
     solution_temperature = read_solution_temperature()
 
-    vitality_score = calculate_vitality(temperature, humidity)
-    message = generate_message(temperature, humidity)
-
     data = {
         "temperature": temperature,
         "humidity": humidity,
@@ -234,6 +231,13 @@ def read_sensor_payload(dht, spi):
         "light_voltage": voltage_from_raw(light_raw),
         "light_status": light_status(light_raw),
     }
+    vitality_score, message = calculate_basil_vitality(
+        temperature=temperature,
+        humidity=humidity,
+        solution_temperature=solution_temperature,
+        water_status=data["water_status"],
+        observed_at=datetime.now().astimezone(),
+    )
 
     supabase_payload = {
         **data,

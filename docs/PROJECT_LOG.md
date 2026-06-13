@@ -419,3 +419,38 @@
 - systemd serviceへ手動送信を要求し、`light_lux=245.8`、`light_status=dim`でSupabase POST `201`を確認した。
 - Supabase最新行に養液温度`27.375℃`、照度`245.8 lx`、フロート`low_water`が保存された。
 - BH1750、DS18B20、フロートスイッチの3センサーすべてが常駐serviceから送信可能になった。
+
+### 現状サマリー作成
+
+- 2台構成、配線、抵抗、OS設定、systemd、最新値、Supabase列、表示方法、テスト状況、残作業を`docs/CURRENT_STATUS_2026-06-13.md`へ整理した。
+
+### リポジトリ内ドキュメント更新
+
+- `README.md`の環境変数例、実行方法、systemd手動送信手順を2台構成に合わせて更新した。
+- `AGENTS.md`の確認コマンドを両デバイスと現行センサーモジュールに対応させた。
+- Flutterアプリの起動例へ`DEVICE_ID`を追加した。
+- 2026年6月1日のADC資料を履歴資料として明示し、現行状態と配線資料へのリンクを追加した。
+
+### バジル水耕栽培のvitality評価強化
+
+#### 調査と設計
+
+- バジルの光強度・DLI、根域の通気、養液温度、水位低下の因果関係を一次研究中心に整理した。
+- 調査結果、採用閾値、重み、緊急上限、現センサーの限界を`docs/BASIL_VITALITY_RESEARCH_2026-06-13.md`へ記録した。
+- BH1750のluxはPPFD/DLIではないため、09:00～15:00の補助評価に限定し、夜間や日の出直後を減点しない方針にした。
+
+#### 実装
+
+- `vitality.py`へ養液温度、照度、水位、気温、湿度を統合する`calculate_basil_vitality()`を追加した。
+- 水位低下、養液高温・低温、水位と温度の複合ストレスは、良好な他センサー値で相殺されない上限制約を追加した。
+- `send_sensor_raspi.py`、`send_sensor_raspberrypi2.py`、`main.py`を新しい評価ロジックへ切り替えた。
+- GitHub Pagesの助言へ水位低下、養液温度、複合ストレスを追加し、低照度助言を日中コア時間帯だけに限定した。
+- `LIGHT_EVALUATION_START_HOUR=9`と`LIGHT_EVALUATION_END_HOUR=15`を2号機の設定項目として追加した。
+
+#### 検証
+
+- Python対象ファイルの読み取り専用構文チェックに成功した。
+- `test_vitality.py`、`test_ds18b20.py`、`test_bh1750.py`、`test_float_switch.py`の22件が成功した。
+- `docs/index.html`内のJavaScript構文チェックに成功した。
+- 7時台の実測相当値は夜明け補正で100、同じ照度が正午なら92、低水位と31℃の複合条件は15になることを確認した。
+- DBスキーマ変更、Raspberry Piへの配備、systemd再起動は行っていない。

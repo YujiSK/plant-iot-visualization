@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from vitality import calculate_vitality, generate_message
+from vitality import calculate_basil_vitality
 
 app = FastAPI()
 DB_PATH = "data.db"
@@ -80,8 +80,14 @@ class SensorData(BaseModel):
 
 @app.post("/sensor")
 def receive_sensor(data: SensorData):
-    vitality_score = calculate_vitality(data.temperature, data.humidity)
-    message = generate_message(data.temperature, data.humidity)
+    vitality_score, message = calculate_basil_vitality(
+        temperature=data.temperature,
+        humidity=data.humidity,
+        solution_temperature=data.solution_temperature,
+        light_lux=data.light_lux,
+        water_status=data.water_status,
+        float_switch_triggered=data.float_switch_triggered,
+    )
 
     with get_connection() as conn:
         conn.execute(

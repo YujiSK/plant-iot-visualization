@@ -8,6 +8,8 @@
 4. Flutter SDKがある環境で`DEVICE_ID`を切り替えて実機表示を確認する
 5. 2026-06-02の週初め頃に行った植え替え、養液変更、フェルト変更、枯死確認の正確な日時を整理する
 6. 今後の給水・植え替え作業を`care_logs`に記録できる入力方法を追加する
+7. 新しいvitalityロジックを両Piへ配備し、再起動後のservice・journal・Supabase最新行を確認する
+8. BH1750の5分値から日中積算luxを算出し、量子センサーとの現地校正後に推定DLIへ移行する
 
 ## 保留
 
@@ -18,6 +20,7 @@
 - care_logsとsensor_logsを使った回復傾向分析
 - フェルト側の乾燥を検出する方法の検討
 - 手動送信reload機能の運用後、`MANUAL_SEND_MIN_INTERVAL_SECONDS` の適正値を調整する
+- pH、EC、溶存酸素センサーの追加とvitalityへの統合
 
 ## 注意点
 

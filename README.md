@@ -33,6 +33,9 @@ The complete wiring reference is available in
 [`docs/wiring.dot`](docs/wiring.dot) and published as
 [`docs/wiring.svg`](docs/wiring.svg).
 
+The verified deployment status, services, and remaining work are summarized in
+[`docs/CURRENT_STATUS_2026-06-13.md`](docs/CURRENT_STATUS_2026-06-13.md).
+
 Generate it after installing Graphviz:
 
 ```bash
@@ -55,7 +58,7 @@ The secondary device does not need the DHT11/SPI dependencies:
 pip install -r requirements-raspberrypi2.txt
 ```
 
-Create `.env`:
+Create `.env` on `raspi`:
 
 ```dotenv
 SUPABASE_URL=https://your-project.supabase.co
@@ -66,16 +69,35 @@ DHT_RETRIES=8
 DS18B20_SENSOR_ID=28-your-sensor-id
 DEVICE_ID=raspi
 LOCATION_ID=location-a
+MANUAL_SEND_MIN_INTERVAL_SECONDS=60
+```
+
+Create a separate `.env` on `raspberrypi2`:
+
+```dotenv
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-publishable-key
+SUPABASE_SENSOR_KEY=your-private-service-role-or-sensor-write-key
+SENSOR_INTERVAL_SECONDS=300
+DS18B20_SENSOR_ID=28-your-sensor-id
+DEVICE_ID=raspberrypi2
+LOCATION_ID=location-b
 BH1750_I2C_BUS=1
 BH1750_ADDRESS=0x23
 FLOAT_SWITCH_GPIO=17
 LIGHT_DARK_LUX=100
 LIGHT_BRIGHT_LUX=1000
+LIGHT_EVALUATION_START_HOUR=9
+LIGHT_EVALUATION_END_HOUR=15
 MANUAL_SEND_MIN_INTERVAL_SECONDS=60
 ```
 
 `TEMP_OFFSET` and `HUMIDITY_OFFSET` were for the old Sense HAT prototype. The
 current DHT11 runtime intentionally does not apply offset correction.
+
+`LIGHT_EVALUATION_START_HOUR` and `LIGHT_EVALUATION_END_HOUR` define the local
+core daylight window used for vitality scoring. Lux readings outside this
+window are recorded but do not reduce vitality.
 
 Enable 1-Wire for the DS18B20 by adding
 `dtoverlay=w1-gpio,gpiopin=4` to `/boot/firmware/config.txt`, then reboot.
@@ -93,12 +115,7 @@ python scripts/generate_pages_config.py
 
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000
-python send_sensor.py
-```
 
-Use the device-specific entry point in systemd:
-
-```bash
 # raspi
 python send_sensor_raspi.py
 
@@ -106,11 +123,19 @@ python send_sensor_raspi.py
 python send_sensor_raspberrypi2.py
 ```
 
-Trigger one manual reading without restarting the service:
+`send_sensor.py` remains as a compatibility wrapper for the existing
+`plant-sensor.service` on `raspi`.
+
+Trigger one manual reading without restarting each service:
 
 ```bash
+# raspi
 sudo systemctl reload plant-sensor.service
 journalctl -u plant-sensor.service -n 30 --no-pager -l
+
+# raspberrypi2
+sudo systemctl reload plant-sensor-raspberrypi2.service
+journalctl -u plant-sensor-raspberrypi2.service -n 30 --no-pager -l
 ```
 
 Manual reload requests are skipped when the previous successful send was less
@@ -133,8 +158,8 @@ supabase_multi_device_migration.sql
 supabase_multi_device_nullable_ambient_migration.sql
 ```
 
-Until that migration is applied, `send_sensor.py` retries Supabase writes
-without the ADC fields so temperature/humidity logging can continue.
+The deployed environment has these migrations applied. The primary sender
+retains a fallback write path for older database deployments.
 
 GitHub Pages selects a device with a query parameter:
 

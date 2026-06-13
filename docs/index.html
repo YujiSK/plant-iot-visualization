@@ -449,6 +449,14 @@
       });
     }
 
+    function isCoreDaylight(data) {
+      if (!data.created_at) return true;
+      const observedAt = new Date(data.created_at);
+      if (Number.isNaN(observedAt.getTime())) return true;
+      const hour = observedAt.getHours();
+      return hour >= 9 && hour < 15;
+    }
+
     function generateAdvice(data) {
       const d = normalizeData(data);
       const score = d.vitality_score ?? 0;
@@ -460,6 +468,45 @@
         actions: [],
       };
 
+      if (d.water_status === "dry" || d.float_switch_triggered === true) {
+        addCause(
+          result,
+          "水位低下",
+          95,
+          "根への給水が途切れると、光や温度が良好でも短時間で吸水・蒸散のバランスが崩れます。",
+          ["タンク水位を最優先で確認してください。", "根・フェルト・給水経路が水に接触しているか確認してください。"]
+        );
+      }
+      if (d.solution_temperature >= 30) {
+        addCause(
+          result,
+          "養液高温",
+          85,
+          "高い養液温度では根の呼吸需要が増える一方、溶存酸素は減りやすくなります。",
+          ["養液を日陰に置き、30℃未満へ下げてください。", "根域の通気・循環を確認してください。"]
+        );
+      } else if (d.solution_temperature != null && d.solution_temperature < 15) {
+        addCause(
+          result,
+          "養液低温",
+          80,
+          "低温の養液では根の吸水と養分吸収が鈍り、生育が停滞しやすくなります。",
+          ["養液を15℃以上へ戻し、急激な温度変化を避けてください。"]
+        );
+      }
+      if (
+        (d.water_status === "dry" || d.float_switch_triggered === true) &&
+        d.solution_temperature != null &&
+        (d.solution_temperature >= 30 || d.solution_temperature < 15)
+      ) {
+        addCause(
+          result,
+          "水位・養液温度の複合ストレス",
+          95,
+          "水不足と根域温度異常が重なり、単独要因より強いストレスになる可能性があります。",
+          ["先に給水を復旧し、その後に養液温度を適正域へ戻してください。"]
+        );
+      }
       if (d.water_status === "wet" && score < 50) {
         addCause(
           result,
@@ -492,23 +539,24 @@
           ["水位と保持材の湿りを確認してください。", "強光を一時的に避けてください。"]
         );
       }
-      if (d.light_status === "dim" || d.light_status === "dark") {
+      if (
+        isCoreDaylight(d) &&
+        (d.light_status === "dim" || d.light_status === "dark")
+      ) {
         addCause(
           result,
           "光量不足",
           60,
-          "光量不足により、生育が弱くなる可能性があります。",
-          ["LED照明を近づける、または照射時間を見直してください。"]
+          "日中コア時間帯の照度が低く、日積算光量が不足する可能性があります。",
+          ["遮蔽物やセンサー位置を確認し、数日間の日中推移を比較してください。"]
         );
       }
       if (
         score >= 70 &&
         (d.water_status === "wet" || d.water_status === "enough_water") &&
-        d.light_status === "bright" &&
-        d.temperature >= 15 &&
-        d.temperature < 30 &&
-        d.humidity >= 40 &&
-        d.humidity < 80
+        (!isCoreDaylight(d) || d.light_status === "bright") &&
+        (d.solution_temperature == null ||
+          (d.solution_temperature >= 18 && d.solution_temperature <= 28))
       ) {
         addCause(
           result,

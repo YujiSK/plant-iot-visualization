@@ -5,6 +5,7 @@ import os
 import signal
 import threading
 import time
+from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -12,6 +13,7 @@ from dotenv import load_dotenv
 from bh1750 import read_lux
 from ds18b20 import read_temperature
 from float_switch import read_triggered
+from vitality import calculate_basil_vitality
 
 
 load_dotenv()
@@ -29,6 +31,8 @@ BH1750_ADDRESS = int(os.getenv("BH1750_ADDRESS", "0x23"), 0)
 FLOAT_SWITCH_GPIO = int(os.getenv("FLOAT_SWITCH_GPIO", "17"))
 LIGHT_DARK_LUX = float(os.getenv("LIGHT_DARK_LUX", "100"))
 LIGHT_BRIGHT_LUX = float(os.getenv("LIGHT_BRIGHT_LUX", "1000"))
+LIGHT_EVALUATION_START_HOUR = int(os.getenv("LIGHT_EVALUATION_START_HOUR", "9"))
+LIGHT_EVALUATION_END_HOUR = int(os.getenv("LIGHT_EVALUATION_END_HOUR", "15"))
 
 manual_send_requested = threading.Event()
 
@@ -47,24 +51,29 @@ def light_status(lux):
     return "dim"
 
 
-def calculate_remote_status(solution_temperature, light_state, float_triggered):
-    score = 100
-    messages = []
+def calculate_remote_status(
+    solution_temperature,
+    light_state,
+    float_triggered,
+    light_lux=None,
+    observed_at=None,
+):
+    if light_lux is None:
+        representative_lux = {
+            "dark": 100.0,
+            "dim": 2500.0,
+            "bright": 10000.0,
+        }
+        light_lux = representative_lux.get(light_state)
 
-    if float_triggered is True:
-        score -= 60
-        messages.append("水位低下を検出しました")
-    if (
-        solution_temperature is not None
-        and (solution_temperature < 15 or solution_temperature >= 30)
-    ):
-        score -= 20
-        messages.append("養液温度を確認してください")
-    if light_state == "dark":
-        score -= 10
-        messages.append("照度が低い状態です")
-
-    return max(0, score), " / ".join(messages) if messages else "安定しています"
+    return calculate_basil_vitality(
+        solution_temperature=solution_temperature,
+        light_lux=light_lux,
+        float_switch_triggered=float_triggered,
+        observed_at=observed_at,
+        light_start_hour=LIGHT_EVALUATION_START_HOUR,
+        light_end_hour=LIGHT_EVALUATION_END_HOUR,
+    )
 
 
 def read_optional(label, reader):
@@ -102,10 +111,13 @@ def build_payload():
         lambda: read_triggered(gpio=FLOAT_SWITCH_GPIO),
     )
     current_light_status = light_status(light_lux)
+    observed_at = datetime.now().astimezone()
     vitality_score, message = calculate_remote_status(
         solution_temperature,
         current_light_status,
         float_triggered,
+        light_lux=light_lux,
+        observed_at=observed_at,
     )
 
     return {

@@ -21,7 +21,7 @@ class FloatSwitchTest(unittest.TestCase):
 
     def test_remote_status_reports_low_water(self):
         score, message = calculate_remote_status(24.0, "bright", True)
-        self.assertEqual(score, 40)
+        self.assertLessEqual(score, 25)
         self.assertIn("水位低下", message)
 
     def test_remote_status_is_stable(self):
