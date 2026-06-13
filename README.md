@@ -95,6 +95,22 @@ MANUAL_SEND_MIN_INTERVAL_SECONDS=60
 `TEMP_OFFSET` and `HUMIDITY_OFFSET` were for the old Sense HAT prototype. The
 current DHT11 runtime intentionally does not apply offset correction.
 
+Historical SQLite rows can be exported with both the stored values and the
+reconstructed pre-offset Sense HAT outputs:
+
+```bash
+python scripts/reconstruct_historical_sensor_data.py \
+  --db data.db \
+  --output exports/sensor_logs_reconstructed.csv
+```
+
+The source database is opened read-only. The CSV preserves every original
+column and adds the applied offsets, reconstructed outputs, evidence, and
+confidence. A metadata JSON file records the source database hashes and the
+reconstruction periods. Generated files under `exports/` are not committed.
+The reconstructed Sense HAT temperature still includes Raspberry Pi board heat
+and is not a calibrated ambient temperature.
+
 `LIGHT_EVALUATION_START_HOUR` and `LIGHT_EVALUATION_END_HOUR` define the local
 core daylight window used for vitality scoring. Lux readings outside this
 window are recorded but do not reduce vitality.
