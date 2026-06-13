@@ -26,24 +26,75 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    .dashboard {
-      width: min(860px, 100%);
+    .page-header {
+      width: min(1120px, 100%);
+      color: rgba(255, 255, 255, 0.92);
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .page-title {
+      font-size: clamp(24px, 5vw, 34px);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: clamp(13px, 3vw, 15px);
+      line-height: 1.7;
+      opacity: 0.82;
+    }
+
+    .workspace {
+      width: min(1400px, 100%);
       display: grid;
-      grid-template-columns: minmax(0, 400px);
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 0.9fr);
       gap: 16px;
-      justify-content: center;
       align-items: start;
     }
 
-    @media (min-width: 860px) {
-      .dashboard {
-        grid-template-columns: minmax(0, 400px) minmax(320px, 400px);
+    @media (max-width: 1180px) {
+      .workspace {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
+    .panel {
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .panel-shell {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.09);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 24px;
+      padding: 18px;
+      color: #fff;
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      opacity: 0.9;
+    }
+
+    .panel-lead {
+      font-size: 13px;
+      line-height: 1.7;
+      opacity: 0.78;
+      margin-bottom: 12px;
+    }
+
     /* ── Glass card ── */
-    .card,
-    .doctor-card {
+    .card {
       width: 100%;
       background: rgba(255, 255, 255, 0.13);
       backdrop-filter: blur(28px);
@@ -54,12 +105,58 @@
       box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
     }
 
-    .card {
-      padding: 32px 24px 28px;
-      text-align: center;
+    .device-card {
+      padding: 26px 20px 22px;
+      text-align: left;
     }
 
-    .doctor-card {
+    .device-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .device-title-wrap {
+      min-width: 0;
+    }
+
+    .device-title {
+      font-size: clamp(18px, 4vw, 22px);
+      font-weight: 800;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .device-subtitle {
+      font-size: 13px;
+      opacity: 0.72;
+      line-height: 1.6;
+    }
+
+    .device-badge {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+
+    .device-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .device-card {
       padding: 26px 22px 22px;
       text-align: left;
     }
@@ -164,25 +261,25 @@
       opacity: 0.92;
     }
 
-    /* ── Plant Doctor ── */
-    .doctor-title {
+    /* ── Analysis ── */
+    .analysis-title {
       font-size: clamp(17px, 4vw, 20px);
       font-weight: 800;
       margin-bottom: 12px;
       letter-spacing: 0.02em;
     }
 
-    .doctor-section {
+    .analysis-section {
       padding: 12px 0;
       border-top: 1px solid rgba(255, 255, 255, 0.16);
     }
 
-    .doctor-section:first-of-type {
+    .analysis-section:first-of-type {
       border-top: 0;
       padding-top: 0;
     }
 
-    .doctor-heading {
+    .analysis-heading {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -205,13 +302,13 @@
     .level-dot.warning { background: #facc15; }
     .level-dot.danger { background: #f87171; }
 
-    .doctor-list {
+    .analysis-list {
       display: grid;
       gap: 7px;
       list-style: none;
     }
 
-    .doctor-row {
+    .analysis-row {
       display: grid;
       gap: 4px;
       padding: 9px 11px;
@@ -220,7 +317,7 @@
       line-height: 1.45;
     }
 
-    .doctor-row-head {
+    .analysis-row-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -229,14 +326,14 @@
       font-weight: 750;
     }
 
-    .doctor-value {
+    .analysis-value {
       opacity: 0.72;
       font-weight: 650;
       white-space: nowrap;
     }
 
-    .doctor-comment,
-    .doctor-action {
+    .analysis-comment,
+    .analysis-action {
       font-size: 13px;
       line-height: 1.5;
       opacity: 0.86;
@@ -279,108 +376,195 @@
       font-weight: 600;
     }
 
-    /* ── Demo mode bar ── */
-    .demo-bar {
+    .global-footer {
+      width: min(1400px, 100%);
+      margin-top: 18px;
+    }
+
+    .period-bar {
+      width: 100%;
       display: flex;
       gap: 8px;
-      margin-top: 20px;
+      margin: 0 0 18px;
       flex-wrap: wrap;
       justify-content: center;
     }
 
-    .demo-btn {
-      padding: 6px 16px;
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.35);
+    .period-btn {
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.32);
       background: rgba(255, 255, 255, 0.12);
-      color: rgba(255, 255, 255, 0.8);
+      color: rgba(255, 255, 255, 0.86);
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 600;
       cursor: pointer;
       font-family: inherit;
       transition: background 0.2s, color 0.2s, border-color 0.2s;
     }
 
-    .demo-btn:hover {
+    .period-btn:hover {
       background: rgba(255, 255, 255, 0.22);
       color: #fff;
     }
 
-    .demo-btn.active {
+    .period-btn.active {
       background: rgba(255, 255, 255, 0.32);
       color: #fff;
+      border-color: rgba(255, 255, 255, 0.68);
+    }
+
+    .card-header-note {
+      margin-top: 6px;
+      font-size: 13px;
+      opacity: 0.7;
+      line-height: 1.55;
+    }
+
+    .chart-panel {
+      margin: 18px 0 16px;
+      padding: 14px 14px 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .chart-title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .chart-title {
       font-weight: 700;
-      border-color: rgba(255, 255, 255, 0.65);
+      opacity: 0.9;
+    }
+
+    .chart-meta {
+      opacity: 0.68;
+      text-align: right;
+    }
+
+    .chart-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .summary-tile {
+      background: rgba(255, 255, 255, 0.11);
+      border-radius: 16px;
+      padding: 12px 12px 10px;
+    }
+
+    .summary-label {
+      font-size: 11px;
+      opacity: 0.68;
+      letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+
+    .summary-value {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .summary-unit {
+      font-size: 14px;
+      opacity: 0.7;
+      margin-left: 2px;
+      font-weight: 600;
+    }
+
+    .summary-note {
+      margin-top: 5px;
+      font-size: 12px;
+      opacity: 0.62;
+      line-height: 1.45;
+    }
+
+    .analysis-list.compact .analysis-row {
+      padding: 8px 10px;
     }
   </style>
 </head>
 <body>
 
-  <div class="dashboard">
-    <main id="card" class="card" aria-live="polite">
-      <h1 class="plant-title">🌿 バジルの状態</h1>
-      <div class="state-msg">
-        <span class="spinner"></span>読み込み中…
-      </div>
-    </main>
+  <header class="page-header">
+    <div class="page-title">Plant IoT 2台ダッシュボード</div>
+    <div class="page-subtitle">1号機は動作確認、2号機は実栽培環境として分けて表示します。最新値と判定を並べて確認できます。</div>
+  </header>
 
-    <aside id="doctor-card" class="doctor-card" aria-live="polite">
-      <div class="doctor-title">Plant Doctor</div>
-      <div class="state-msg">診断待機中…</div>
+  <div class="workspace">
+    <section class="panel">
+      <div class="panel-shell">
+        <div class="panel-title">最新センサー</div>
+        <div class="panel-lead">1号機は動作確認、2号機は実栽培環境です。左側で最新値とアドバイスを確認します。</div>
+        <div id="device-stack" class="panel"></div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <div class="panel-shell">
+        <div class="panel-title">データ推移</div>
+        <div class="panel-lead">期間を切り替えて、各機体の vitality 推移を追えます。</div>
+        <div id="period-bar" class="period-bar" role="group" aria-label="表示期間切替">
+          <button type="button" data-period="6h" class="period-btn">6時間</button>
+          <button type="button" data-period="24h" class="period-btn active">24時間</button>
+          <button type="button" data-period="7d" class="period-btn">7日</button>
+        </div>
+        <div id="graph-stack" class="panel"></div>
+      </div>
+    </aside>
+
+    <aside class="panel">
+      <div class="panel-shell">
+        <div class="panel-title">目的・背景・進捗</div>
+        <div id="project-summary" class="panel-lead"></div>
+      </div>
     </aside>
   </div>
 
-  <div id="demo-bar" class="demo-bar" role="group" aria-label="表示モード切替">
-    <button type="button" data-mode="normal" class="demo-btn active" aria-pressed="true">通常</button>
-    <button type="button" data-mode="good" class="demo-btn" aria-pressed="false">良好</button>
-    <button type="button" data-mode="warning" class="demo-btn" aria-pressed="false">注意</button>
-    <button type="button" data-mode="danger" class="demo-btn" aria-pressed="false">要対応</button>
-  </div>
-
-  <footer id="footer" class="footer"></footer>
+  <footer id="footer" class="footer global-footer"></footer>
 
   <script src="config.js"></script>
   <script>
     const BASE = (window.PLANT_CONFIG?.SUPABASE_URL || "").replace(/\/$/, "");
-    const KEY  = window.PLANT_CONFIG?.SUPABASE_KEY || "";
+    const KEY = window.PLANT_CONFIG?.SUPABASE_KEY || "";
 
-    if (!BASE || !KEY) showState("設定が見つかりません");
+    const DEVICES = [
+      { id: "raspi", label: "1号機", title: "raspi", note: "動作確認ノード", accent: "#7dd3fc" },
+      { id: "raspberrypi2", label: "2号機", title: "raspberrypi2", note: "実栽培環境", accent: "#fde68a" },
+    ];
+
+    const PERIODS = {
+      "6h": { label: "6時間", hours: 6 },
+      "24h": { label: "24時間", hours: 24 },
+      "7d": { label: "7日", hours: 24 * 7 },
+    };
 
     const THEMES = {
-      good:    { bg1: "#0c4a24", bg2: "#166534", label: "良好"   },
-      caution: { bg1: "#451a03", bg2: "#78350f", label: "注意"   },
+      good:    { bg1: "#0c4a24", bg2: "#166534", label: "良好" },
+      caution: { bg1: "#451a03", bg2: "#78350f", label: "注意" },
       alert:   { bg1: "#450a0a", bg2: "#7f1d1d", label: "要対応" },
     };
 
-    const DEMO_DATA = {
-      good: {
-        temperature: 26.0, humidity: 50.0,
-        solution_temperature: 24.5,
-        water_raw: 2100, water_status: "enough_water",
-        water_voltage: 1.692,
-        light_lux: 3500, light_status: "bright",
-        vitality_score: 92, message: "安定しています",
-      },
-      warning: {
-        temperature: 30.5, humidity: 38.0,
-        solution_temperature: 28.0,
-        water_raw: 900, water_status: "wet",
-        water_voltage: 0.725,
-        light_lux: 600, light_status: "dim",
-        vitality_score: 68, message: "やや注意が必要です",
-      },
-      danger: {
-        temperature: 36.0, humidity: 28.0,
-        solution_temperature: 32.5,
-        water_raw: 0, water_status: "dry",
-        water_voltage: 0.0,
-        light_lux: 40, light_status: "dark",
-        vitality_score: 40, message: "乾燥しています",
-      },
-    };
+    const QUERY_FIELDS =
+      "temperature,humidity,solution_temperature,water_raw,water_voltage,water_status,light_raw,light_voltage,light_lux,light_status,float_switch_triggered,float_switch_state,device_id,location_id,vitality_score,message,created_at";
 
-    let demoMode = null;
-    const DEVICE_ID = new URLSearchParams(window.location.search).get("device") || "raspi";
+    let selectedPeriod = "24h";
+    let refreshTimer = null;
 
     function theme(score) {
       if (score >= 80) return THEMES.good;
@@ -389,7 +573,7 @@
     }
 
     function toJst(utcStr) {
-      const s = /Z|[+-]\d{2}:?\d{2}$/.test(utcStr) ? utcStr : utcStr + "Z";
+      const s = /Z|[+-]\d{2}:?\d{2}$/.test(utcStr) ? utcStr : `${utcStr}Z`;
       return new Date(s).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", hour12: false });
     }
 
@@ -401,396 +585,370 @@
       return v != null ? Number(v).toString() : "--";
     }
 
-    function sensorStatusLabel(kind, value) {
-      const labels = {
-        water: {
-          dry: "乾燥",
-          transition: "境界",
-          wet: "湿り",
-          enough_water: "十分",
-        },
-        light: {
-          dark: "暗い",
-          dim: "やや暗い",
-          bright: "明るい",
-        },
-      };
-      return labels[kind]?.[value] || "不明";
-    }
-
-    function normalizeData(data) {
+    function normalize(data) {
       return {
         ...data,
         water_raw: data.water_raw ?? data.water_level_raw,
-        water_voltage: data.water_voltage ?? data.water_level_voltage,
         water_status:
           data.water_status ??
-          (data.float_switch_triggered == null
-            ? null
-            : data.float_switch_triggered
-              ? "dry"
-              : "enough_water"),
-        source: data.source ?? data.sensor_type,
+          (data.float_switch_triggered == null ? null : (data.float_switch_triggered ? "dry" : "enough_water")),
       };
+    }
+
+    function waterLabel(value) {
+      return { dry: "乾燥", transition: "境界", wet: "湿り", enough_water: "十分" }[value] || "不明";
+    }
+
+    function lightLabel(value) {
+      return { dark: "暗い", dim: "やや暗い", bright: "明るい" }[value] || "不明";
     }
 
     function vitalitySummary(score) {
-      if (score >= 90) return ["good", "非常に良好です。植物は健康な状態です。"];
-      if (score >= 70) return ["good", "安定しています。現在の管理を継続してください。"];
-      if (score >= 50) return ["warning", "やや注意が必要です。温度・湿度・水位・照度を確認してください。"];
-      if (score >= 30) return ["warning", "植物にストレスがかかっている可能性があります。"];
-      return ["danger", "要対応です。給水・温度・光環境を確認してください。"];
+      if (score >= 90) return ["良好", "非常に良好です。"];
+      if (score >= 70) return ["良好", "安定しています。"];
+      if (score >= 50) return ["注意", "少し注意が必要です。"];
+      if (score >= 30) return ["注意", "ストレスが増えています。"];
+      return ["要対応", "給水や環境を確認してください。"];
     }
 
-    function addCause(result, label, confidence, comment, actions) {
-      result.possibleCauses.push({ label, confidence, comment });
-      actions.forEach(function(action) {
-        if (!result.actions.includes(action)) result.actions.push(action);
-      });
-    }
-
-    function isCoreDaylight(data) {
-      if (!data.created_at) return true;
-      const observedAt = new Date(data.created_at);
-      if (Number.isNaN(observedAt.getTime())) return true;
-      const hour = observedAt.getHours();
-      return hour >= 9 && hour < 15;
-    }
-
-    function generateAdvice(data) {
-      const d = normalizeData(data);
+    function adviceFor(data) {
+      const d = normalize(data);
       const score = d.vitality_score ?? 0;
-      const summary = vitalitySummary(score);
-      const result = {
-        status: summary[0],
-        summary: summary[1],
-        possibleCauses: [],
-        actions: [],
-      };
+      const [label, summary] = vitalitySummary(score);
+      const causes = [];
+      const actions = [];
 
       if (d.water_status === "dry" || d.float_switch_triggered === true) {
-        addCause(
-          result,
-          "水位低下",
-          95,
-          "根への給水が途切れると、光や温度が良好でも短時間で吸水・蒸散のバランスが崩れます。",
-          ["タンク水位を最優先で確認してください。", "根・フェルト・給水経路が水に接触しているか確認してください。"]
-        );
+        causes.push("水位が低い可能性");
+        actions.push("まず水位を確認してください。");
       }
-      if (d.solution_temperature >= 30) {
-        addCause(
-          result,
-          "養液高温",
-          85,
-          "高い養液温度では根の呼吸需要が増える一方、溶存酸素は減りやすくなります。",
-          ["養液を日陰に置き、30℃未満へ下げてください。", "根域の通気・循環を確認してください。"]
-        );
-      } else if (d.solution_temperature != null && d.solution_temperature < 15) {
-        addCause(
-          result,
-          "養液低温",
-          80,
-          "低温の養液では根の吸水と養分吸収が鈍り、生育が停滞しやすくなります。",
-          ["養液を15℃以上へ戻し、急激な温度変化を避けてください。"]
-        );
+      if (d.solution_temperature != null && d.solution_temperature >= 30) {
+        causes.push("養液がやや高温");
+        actions.push("養液を少し涼しい場所へ移してください。");
       }
-      if (
-        (d.water_status === "dry" || d.float_switch_triggered === true) &&
-        d.solution_temperature != null &&
-        (d.solution_temperature >= 30 || d.solution_temperature < 15)
-      ) {
-        addCause(
-          result,
-          "水位・養液温度の複合ストレス",
-          95,
-          "水不足と根域温度異常が重なり、単独要因より強いストレスになる可能性があります。",
-          ["先に給水を復旧し、その後に養液温度を適正域へ戻してください。"]
-        );
+      if (d.humidity != null && d.humidity < 40) {
+        causes.push("空気が乾き気味");
+        actions.push("乾燥が続くか見てください。");
       }
-      if (d.water_status === "wet" && score < 50) {
-        addCause(
-          result,
-          "給水経路異常",
-          85,
-          "貯水部には水がありますが、植物保持材や根まで水が届いていない可能性があります。フェルト・ろ過ウール・根の接触状態を確認してください。",
-          [
-            "フェルトが湿っているか確認してください。",
-            "ろ過ウール全体に水が広がっているか確認してください。",
-            "根がろ過ウールに接触しているか確認してください。",
-            "必要に応じて、ろ過ウールを直接湿らせてください。",
-          ]
-        );
+      if (d.light_status === "dark" || d.light_status === "dim") {
+        causes.push("日中の光が少なめ");
+        actions.push("光の当たり方を確認してください。");
       }
-      if (d.temperature >= 30 && d.light_status === "bright") {
-        addCause(
-          result,
-          "高温・強光ストレス",
-          70,
-          "高温かつ強光のため、葉のしおれや蒸散増加が起きる可能性があります。",
-          ["LEDとの距離を広げてください。", "一時的に明るい日陰へ移動してください。", "ファンや換気を検討してください。"]
-        );
-      }
-      if (d.humidity < 40) {
-        addCause(
-          result,
-          "乾燥ストレス",
-          65,
-          "湿度が低く、植物の蒸散が増えている可能性があります。",
-          ["水位と保持材の湿りを確認してください。", "強光を一時的に避けてください。"]
-        );
-      }
-      if (
-        isCoreDaylight(d) &&
-        (d.light_status === "dim" || d.light_status === "dark")
-      ) {
-        addCause(
-          result,
-          "光量不足",
-          60,
-          "日中コア時間帯の照度が低く、日積算光量が不足する可能性があります。",
-          ["遮蔽物やセンサー位置を確認し、数日間の日中推移を比較してください。"]
-        );
-      }
-      if (
-        score >= 70 &&
-        (d.water_status === "wet" || d.water_status === "enough_water") &&
-        (!isCoreDaylight(d) || d.light_status === "bright") &&
-        (d.solution_temperature == null ||
-          (d.solution_temperature >= 18 && d.solution_temperature <= 28))
-      ) {
-        addCause(
-          result,
-          "安定状態",
-          90,
-          "大きな異常は検出されていません。",
-          ["現在の管理を継続してください。"]
-        );
+      if (!causes.length && score >= 70) {
+        causes.push("大きな異常は見えていません");
+        actions.push("今の管理を続けてください。");
       }
 
-      if (!result.actions.length) {
-        result.actions.push("センサー値の推移を確認してください。");
-      }
-      result.possibleCauses = result.possibleCauses.slice(0, 3);
-      result.actions = result.actions.slice(0, 3);
-      return result;
+      return { label, summary, causes: causes.slice(0, 3), actions: actions.slice(0, 3) };
     }
 
-    function setBackground(t) {
+    function setBackground(score) {
+      const t = theme(score);
       document.documentElement.style.setProperty("--bg1", t.bg1);
       document.documentElement.style.setProperty("--bg2", t.bg2);
     }
 
-    /* showState: msg is always a hardcoded constant, but use textContent
-       to ensure future callers (e.g. error.message) cannot inject HTML. */
-    function showState(msg) {
-      const card = document.getElementById("card");
-      const doctor = document.getElementById("doctor-card");
-      card.innerHTML =
-        `<h1 class="plant-title">🌿 バジルの状態</h1>
-         <div class="state-msg"></div>`;
-      card.querySelector(".state-msg").textContent = msg;
-      doctor.innerHTML =
-        `<div class="doctor-title">Plant Doctor</div>
-         <div class="state-msg"></div>`;
-      doctor.querySelector(".state-msg").textContent = msg;
-      document.getElementById("footer").innerHTML = "";
+    function periodHours() {
+      return PERIODS[selectedPeriod]?.hours || 24;
     }
 
-    function appendDoctorRow(list, headText, valueText, commentText, level) {
-      const row = document.createElement("li");
-      row.className = "doctor-row";
-      const head = document.createElement("div");
-      head.className = "doctor-row-head";
-      const left = document.createElement("span");
-      const dot = document.createElement("span");
-      dot.className = `level-dot ${level || ""}`;
-      left.append(dot, " ", headText);
-      const value = document.createElement("span");
-      value.className = "doctor-value";
-      value.textContent = valueText;
-      head.append(left, value);
-      const comment = document.createElement("div");
-      comment.className = "doctor-comment";
-      comment.textContent = commentText;
-      row.append(head, comment);
-      list.appendChild(row);
+    function setPeriodButtons() {
+      document.querySelectorAll(".period-btn").forEach(function(btn) {
+        const active = btn.dataset.period === selectedPeriod;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      });
     }
 
-    function appendSimpleRow(list, text, className = "doctor-action") {
-      const row = document.createElement("li");
-      row.className = "doctor-row";
-      const body = document.createElement("div");
-      body.className = className;
-      body.textContent = text;
-      row.appendChild(body);
-      list.appendChild(row);
-    }
-
-    function renderDoctor(d, advice) {
-      const doctor = document.getElementById("doctor-card");
-      doctor.innerHTML = `
-        <div class="doctor-title">Plant Doctor</div>
-        <section class="doctor-section">
-          <div class="doctor-heading">推定原因</div>
-          <ul class="doctor-list" id="possible-causes"></ul>
-        </section>
-        <section class="doctor-section">
-          <div class="doctor-heading">推奨アクション</div>
-          <ul class="doctor-list" id="doctor-actions"></ul>
-        </section>
+    function renderProjectSummary() {
+      document.getElementById("project-summary").innerHTML = `
+        <p>このプロジェクトは、バジルの状態をセンサーと記録で見やすくするためのものです。</p>
+        <p style="margin-top:10px;">今は、1号機で動作確認、2号機で実栽培を進めています。</p>
+        <ul style="margin: 12px 0 0 18px; line-height: 1.7;">
+          <li>何が起きたかをすぐ気づけるようにする</li>
+          <li>写真とセンサーをあわせて確認する</li>
+          <li>作業内容をあとから振り返れるようにする</li>
+          <li>必要な通知や記録を少しずつ自動化する</li>
+        </ul>
       `;
-
-      const causes = document.getElementById("possible-causes");
-      advice.possibleCauses.forEach(function(item) {
-        appendDoctorRow(causes, item.label, `${item.confidence}%`, item.comment, advice.status);
-      });
-      if (!advice.possibleCauses.length) {
-        appendSimpleRow(causes, "明確な原因候補はありません。継続して推移を確認してください。", "doctor-comment");
-      }
-
-      const actions = document.getElementById("doctor-actions");
-      advice.actions.forEach(function(action) {
-        appendSimpleRow(actions, action);
-      });
     }
 
-    function render(d) {
-      d = normalizeData(d);
+    function renderDeviceCard(device, data) {
+      const card = document.getElementById(`card-${device.id}`);
+      if (!data) {
+        card.innerHTML = `<div class="state-msg"><span class="spinner"></span>${device.label}を読み込み中…</div>`;
+        return;
+      }
+      const d = normalize(data);
       const score = d.vitality_score ?? 0;
-      const t     = theme(score);
-      const advice = generateAdvice(d);
-      setBackground(t);
+      const advice = adviceFor(d);
+      const [stateLabel] = vitalitySummary(score);
+      const lastUpdated = d.created_at ? toJst(d.created_at) : "--";
 
-      /* Build static skeleton via innerHTML (no user data here),
-         then populate dynamic values via textContent to prevent XSS. */
-      const card = document.getElementById("card");
       card.innerHTML = `
-        <h1 class="plant-title">🌿 バジルの状態</h1>
-        <div class="score-section">
-          <div class="score-number" id="score-num"></div>
-          <div class="status-chip">
-            <span class="status-dot"></span><span id="status-label"></span>
+        <div class="device-head">
+          <div class="device-title-wrap">
+            <div class="device-title">${device.label} ${device.title}</div>
+            <div class="device-subtitle">${device.note}</div>
+            <div class="card-header-note">最終更新 ${lastUpdated}</div>
           </div>
+          <div class="device-badge"><span class="device-badge-dot"></span><span>${stateLabel}</span></div>
+        </div>
+        <div class="score-section">
+          <div class="score-number">${score}</div>
+          <div class="status-chip"><span class="status-dot"></span><span>${advice.summary}</span></div>
         </div>
         <div class="sensors">
           <div class="sensor-tile">
-            <div class="sensor-value">
-              <span id="temp-val"></span><span class="sensor-unit">℃</span>
-            </div>
+            <div class="sensor-value"><span>${fmt(d.temperature)}</span><span class="sensor-unit">℃</span></div>
             <div class="sensor-label">温度</div>
+            <div class="sensor-detail">湿度 ${fmt(d.humidity)}%</div>
           </div>
           <div class="sensor-tile">
-            <div class="sensor-value">
-              <span id="hum-val"></span><span class="sensor-unit">%</span>
-            </div>
-            <div class="sensor-label">湿度</div>
-          </div>
-          <div class="sensor-tile">
-            <div class="sensor-value">
-              <span id="solution-temp-val"></span><span class="sensor-unit">℃</span>
-            </div>
+            <div class="sensor-value"><span>${fmt(d.solution_temperature)}</span><span class="sensor-unit">℃</span></div>
             <div class="sensor-label">養液温度</div>
+            <div class="sensor-detail">${d.solution_temperature != null ? (d.solution_temperature >= 30 ? "高め" : d.solution_temperature < 15 ? "低め" : "適正") : "--"}</div>
           </div>
           <div class="sensor-tile">
-            <div class="sensor-value status-value" id="water-status"></div>
+            <div class="sensor-value status-value">${waterLabel(d.water_status)}</div>
             <div class="sensor-label">水位</div>
-            <div class="sensor-detail">raw: <span id="water-raw"></span></div>
+            <div class="sensor-detail">raw ${fmtRaw(d.water_raw)}</div>
           </div>
           <div class="sensor-tile">
-            <div class="sensor-value status-value" id="light-status"></div>
+            <div class="sensor-value status-value">${lightLabel(d.light_status)}</div>
             <div class="sensor-label">照度</div>
-            <div class="sensor-detail" id="light-detail"></div>
+            <div class="sensor-detail">${d.light_lux != null ? `${fmt(d.light_lux)} lx` : `raw ${fmtRaw(d.light_raw)}`}</div>
           </div>
         </div>
-        <div class="message" id="msg-box"></div>
+        <div class="message">${advice.summary}</div>
+        <section class="analysis-section">
+          <div class="analysis-heading">気になる点</div>
+          <ul class="analysis-list compact">
+            ${advice.causes.map((item) => `<li class="analysis-row"><div class="analysis-comment">${item}</div></li>`).join("") || '<li class="analysis-row"><div class="analysis-comment">特に大きな異常は見えていません。</div></li>'}
+          </ul>
+        </section>
+        <section class="analysis-section">
+          <div class="analysis-heading">次の一手</div>
+          <ul class="analysis-list compact">
+            ${advice.actions.map((item) => `<li class="analysis-row"><div class="analysis-action">${item}</div></li>`).join("") || '<li class="analysis-row"><div class="analysis-action">様子を見ながら記録を続けてください。</div></li>'}
+          </ul>
+        </section>
       `;
+    }
 
-      document.getElementById("score-num").textContent    = score;
-      document.getElementById("status-label").textContent = t.label;
-      document.getElementById("temp-val").textContent     = fmt(d.temperature);
-      document.getElementById("hum-val").textContent      = fmt(d.humidity);
-      document.getElementById("solution-temp-val").textContent = fmt(d.solution_temperature);
-      document.getElementById("msg-box").textContent      = advice.summary;
-      document.getElementById("water-status").textContent = sensorStatusLabel("water", d.water_status);
-      document.getElementById("water-raw").textContent    = fmtRaw(d.water_raw);
-      document.getElementById("light-status").textContent = sensorStatusLabel("light", d.light_status);
-      document.getElementById("light-detail").textContent =
-        d.light_lux != null ? `${fmt(d.light_lux)} lx` : `raw: ${fmtRaw(d.light_raw)}`;
-      renderDoctor(d, advice);
+    function aggregateSeries(rows, maxPoints) {
+      const points = rows
+        .map((row) => {
+          const d = normalize(row);
+          const x = new Date(d.created_at).getTime();
+          const y = Number(d.vitality_score ?? 0);
+          return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
+        })
+        .filter(Boolean);
+      if (points.length <= maxPoints) return points;
+      const bucketSize = Math.ceil(points.length / maxPoints);
+      const compressed = [];
+      for (let i = 0; i < points.length; i += bucketSize) {
+        const bucket = points.slice(i, i + bucketSize);
+        const avgY = bucket.reduce((sum, p) => sum + p.y, 0) / bucket.length;
+        compressed.push({ x: bucket[0].x, y: avgY });
+      }
+      return compressed;
+    }
 
+    function buildChart(points, accent) {
+      if (!points.length) {
+        return '<div class="state-msg" style="padding:16px 0 10px;">この期間のデータがありません</div>';
+      }
+
+      const width = 640;
+      const height = 190;
+      const pad = { left: 42, right: 14, top: 14, bottom: 28 };
+      const minX = points[0].x;
+      const maxX = points[points.length - 1].x || (minX + 1);
+      const spanX = Math.max(1, maxX - minX);
+      const innerW = width - pad.left - pad.right;
+      const innerH = height - pad.top - pad.bottom;
+
+      function xScale(x) {
+        return pad.left + ((x - minX) / spanX) * innerW;
+      }
+
+      function yScale(y) {
+        return pad.top + (1 - y / 100) * innerH;
+      }
+
+      const line = points.map((p) => `${xScale(p.x).toFixed(1)},${yScale(p.y).toFixed(1)}`).join(" ");
+      const area = [
+        `M ${xScale(points[0].x).toFixed(1)} ${yScale(points[0].y).toFixed(1)}`,
+        ...points.slice(1).map((p) => `L ${xScale(p.x).toFixed(1)} ${yScale(p.y).toFixed(1)}`),
+        `L ${xScale(points[points.length - 1].x).toFixed(1)} ${height - pad.bottom}`,
+        `L ${xScale(points[0].x).toFixed(1)} ${height - pad.bottom}`,
+        "Z",
+      ].join(" ");
+
+      const grid = [25, 50, 75, 100].map((value) => {
+        const y = yScale(value).toFixed(1);
+        return `
+          <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
+          <text x="12" y="${(Number(y) + 4).toFixed(1)}" fill="rgba(255,255,255,0.65)" font-size="11">${value}</text>
+        `;
+      }).join("");
+
+      const start = new Date(points[0].x).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false });
+      const end = new Date(points[points.length - 1].x).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false });
+
+      return `
+        <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="健康スコアの推移">
+          <rect x="0" y="0" width="${width}" height="${height}" rx="16" fill="rgba(255,255,255,0.04)"></rect>
+          ${grid}
+          <path d="${area}" fill="${accent}22"></path>
+          <polyline points="${line}" fill="none" stroke="${accent}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+          <circle cx="${xScale(points[points.length - 1].x).toFixed(1)}" cy="${yScale(points[points.length - 1].y).toFixed(1)}" r="4.5" fill="${accent}" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"></circle>
+          <text x="${pad.left}" y="${height - 8}" fill="rgba(255,255,255,0.72)" font-size="11">${start}</text>
+          <text x="${width - pad.right}" y="${height - 8}" fill="rgba(255,255,255,0.72)" font-size="11" text-anchor="end">${end}</text>
+        </svg>
+      `;
+    }
+
+    function renderGraphCard(device, rows) {
+      const box = document.getElementById(`graph-${device.id}`);
+      if (!rows.length) {
+        box.innerHTML = `<div class="state-msg"><span class="spinner"></span>${device.label}のグラフを読み込み中…</div>`;
+        return;
+      }
+
+      const latest = normalize(rows[rows.length - 1]);
+      const points = aggregateSeries(rows, 120);
+      const values = rows.map((row) => Number(normalize(row).vitality_score ?? 0)).filter(Number.isFinite);
+      const min = values.length ? Math.min(...values) : null;
+      const avg = values.length ? (values.reduce((sum, v) => sum + v, 0) / values.length) : null;
+      const max = values.length ? Math.max(...values) : null;
+
+      box.innerHTML = `
+        <div class="panel-shell" style="padding: 16px 16px 14px; margin-bottom: 14px;">
+          <div class="panel-title" style="margin-bottom: 6px;">${device.label} ${device.title}</div>
+          <div class="panel-lead" style="margin-bottom: 10px;">${PERIODS[selectedPeriod].label} の変化をまとめたグラフです。</div>
+          <div class="chart-title-row">
+            <div class="chart-title">健康スコア</div>
+            <div class="chart-meta">最小 ${min != null ? min : "--"} / 平均 ${avg != null ? avg.toFixed(1) : "--"} / 最大 ${max != null ? max : "--"}</div>
+          </div>
+          ${buildChart(points, device.accent)}
+          <div class="summary-grid" style="margin-top: 10px;">
+            <div class="summary-tile"><div class="summary-label">今の点数</div><div class="summary-value">${latest.vitality_score ?? "--"}</div></div>
+            <div class="summary-tile"><div class="summary-label">水位</div><div class="summary-value">${waterLabel(latest.water_status)}</div></div>
+            <div class="summary-tile"><div class="summary-label">照度</div><div class="summary-value">${lightLabel(latest.light_status)}</div></div>
+            <div class="summary-tile"><div class="summary-label">養液温度</div><div class="summary-value">${fmt(latest.solution_temperature)}<span class="summary-unit">℃</span></div></div>
+          </div>
+        </div>
+      `;
+    }
+
+    function updateProjectSummary() {
+      document.getElementById("project-summary").innerHTML = `
+        <p>このプロジェクトは、バジルの状態をセンサー、写真、記録で見やすくするためのものです。</p>
+        <p style="margin-top:10px;">1号機と2号機を分けて運用し、実際の栽培に役立つ見方を作っています。</p>
+        <ul style="margin: 12px 0 0 18px; line-height: 1.75;">
+          <li>異変に早く気づけるようにする</li>
+          <li>写真とセンサーをあわせて確認する</li>
+          <li>作業内容をあとから振り返れるようにする</li>
+          <li>必要な通知や記録を少しずつ自動化する</li>
+        </ul>
+        <div style="margin-top:14px; font-size:13px; line-height:1.7; opacity:0.8;">
+          現在は、実栽培の観察を続けながら、画面と記録の使いやすさを整えています。
+        </div>
+      `;
+    }
+
+    async function fetchRows(device) {
+      const hours = periodHours();
+      const since = new Date(Date.now() - hours * 3600_000).toISOString();
+      const res = await fetch(
+        `${BASE}/rest/v1/sensor_logs` +
+        `?select=${encodeURIComponent(QUERY_FIELDS)}` +
+        `&device_id=eq.${encodeURIComponent(device.id)}` +
+        `&created_at=gte.${encodeURIComponent(since)}` +
+        `&order=created_at.asc&limit=2500`,
+        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }
+
+    function renderFooter(rowsByDevice) {
+      const latest = Object.values(rowsByDevice)
+        .flat()
+        .map((row) => row.created_at)
+        .filter(Boolean)
+        .sort()
+        .pop();
       const footer = document.getElementById("footer");
-      const strong = document.createElement("strong");
-      strong.textContent = toJst(d.created_at);
       footer.innerHTML = "";
+      const strong = document.createElement("strong");
+      strong.textContent = latest
+        ? `${toJst(latest)} / ${PERIODS[selectedPeriod].label}`
+        : PERIODS[selectedPeriod].label;
       footer.append("最終更新：", strong);
     }
 
-    function renderDemo(mode) {
-      render({ ...DEMO_DATA[mode], created_at: new Date().toISOString() });
-      const footer = document.getElementById("footer");
-      footer.innerHTML = "";
-      const strong = document.createElement("strong");
-      strong.textContent = "デモモード";
-      footer.appendChild(strong);
-    }
-
-    function setActiveBtn(mode) {
-      document.querySelectorAll(".demo-btn").forEach(function(btn) {
-        const isActive = btn.dataset.mode === (mode || "normal");
-        btn.classList.toggle("active", isActive);
-        btn.setAttribute("aria-pressed", String(isActive));
-      });
-    }
-
-    let liveInterval = null;
-
-    function applyDemoMode(mode) {
-      demoMode = mode;
-      setActiveBtn(mode);
-      if (demoMode) {
-        clearInterval(liveInterval);
-        liveInterval = null;
-        renderDemo(demoMode);
-      } else {
-        loadData();
-        liveInterval = setInterval(loadData, 10_000);
+    async function loadAll() {
+      if (!BASE || !KEY) {
+        document.getElementById("device-stack").innerHTML = '<div class="state-msg">設定が見つかりません</div>';
+        document.getElementById("graph-stack").innerHTML = '<div class="state-msg">設定が見つかりません</div>';
+        return;
       }
+
+      setPeriodButtons();
+      const results = {};
+      const states = {};
+
+      await Promise.all(DEVICES.map(async (device) => {
+        try {
+          const rows = await fetchRows(device);
+          results[device.id] = rows;
+          states[device.id] = rows.length ? normalize(rows[rows.length - 1]) : null;
+        } catch (err) {
+          console.error(device.id, err);
+          results[device.id] = [];
+          states[device.id] = null;
+        }
+      }));
+
+      const latestScores = Object.values(states).map((row) => row?.vitality_score).filter((v) => v != null);
+      setBackground(latestScores.length ? Math.min(...latestScores) : 80);
+
+      const deviceStack = document.getElementById("device-stack");
+      deviceStack.innerHTML = "";
+      DEVICES.forEach((device) => {
+        const block = document.createElement("div");
+        block.className = "panel";
+        block.innerHTML = `<main id="card-${device.id}" class="card device-card"></main>`;
+        deviceStack.appendChild(block);
+        renderDeviceCard(device, states[device.id]);
+      });
+
+      const graphStack = document.getElementById("graph-stack");
+      graphStack.innerHTML = "";
+      DEVICES.forEach((device) => {
+        const block = document.createElement("div");
+        block.innerHTML = `<div id="graph-${device.id}"></div>`;
+        graphStack.appendChild(block);
+        renderGraphCard(device, results[device.id] || []);
+      });
+
+      renderProjectSummary();
+      renderFooter(results);
     }
 
-    document.querySelectorAll(".demo-btn").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        applyDemoMode(btn.dataset.mode === "normal" ? null : btn.dataset.mode);
+    document.querySelectorAll(".period-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedPeriod = btn.dataset.period;
+        loadAll();
       });
     });
 
-    async function loadData() {
-      if (demoMode) return;
-      if (!BASE || !KEY) return;
-      try {
-        const res = await fetch(
-          `${BASE}/rest/v1/sensor_logs` +
-          `?select=temperature,humidity,solution_temperature,water_raw,water_voltage,water_status,light_raw,light_voltage,light_lux,light_status,float_switch_triggered,float_switch_state,device_id,location_id,vitality_score,message,created_at` +
-          `&device_id=eq.${encodeURIComponent(DEVICE_ID)}` +
-          `&order=created_at.desc&limit=1`,
-          { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const rows = await res.json();
-        if (!rows.length) { showState("データがありません"); return; }
-        render(rows[0]);
-      } catch (e) {
-        showState("データ取得失敗");
-        console.error(e);
-      }
-    }
-
-    const demoParam = new URLSearchParams(window.location.search).get("demo");
-    if (demoParam && Object.hasOwn(DEMO_DATA, demoParam)) {
-      applyDemoMode(demoParam);
-    } else {
-      loadData();
-      liveInterval = setInterval(loadData, 10_000);
-    }
+    loadAll();
+    refreshTimer = setInterval(loadAll, 30_000);
   </script>
 </body>
 </html>

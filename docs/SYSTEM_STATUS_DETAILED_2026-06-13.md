@@ -473,14 +473,7 @@ raspberrypi2   -> Supabase 201
 
 公開元は`docs/`です。
 
-表示機体はURLクエリで選択します。
-
-```text
-?device=raspi
-?device=raspberrypi2
-```
-
-GitHub Pagesでは、最新センサー値、vitality、原因候補、推奨対応を表示します。
+GitHub Pagesでは、1号機・2号機の最新センサー値、推移グラフ、プロジェクト概要を3ペインで表示します。期間は画面上で切り替えられます。
 
 ## 13. 実施済みの検証
 

@@ -207,12 +207,7 @@ HIGH → water_ok
 
 ### GitHub Pages
 
-URLクエリで表示する機体を選びます。
-
-```text
-?device=raspi
-?device=raspberrypi2
-```
+1号機・2号機の最新値、推移グラフ、プロジェクト概要を3ペインで表示します。
 
 ## 7. テスト状況
 

@@ -177,12 +177,7 @@ supabase_multi_device_nullable_ambient_migration.sql
 The deployed environment has these migrations applied. The primary sender
 retains a fallback write path for older database deployments.
 
-GitHub Pages selects a device with a query parameter:
-
-```text
-?device=raspi
-?device=raspberrypi2
-```
+GitHub Pages now shows both devices side by side, along with a trend graph and a short project summary.
 
 ## Supabase security
 
