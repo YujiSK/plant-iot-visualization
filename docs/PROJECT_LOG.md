@@ -584,3 +584,8 @@
 - 初回push後のGitHub Pages公開反映を確認し、サイドバー、3画面、30日フィルタ、ハッシュ切替処理が配信されていることを確認した。
 - GitHub ActionsのHTML検証で指摘されたボタンの`type`属性と研究メモ領域のアクセシブル名を追加した。
 - Python CIは今回未変更のワークフローが`requests`をインストールせずテストを実行するため失敗した。ローカルでは23テストすべて成功しており、UI変更によるPython回帰ではない。
+
+### GitHub Actions のPython依存修正
+
+- GitHub Actionsの新しいPython環境には、2号機モジュールが読み込む`requests`と`python-dotenv`が入っていなかった。
+- Raspberry Pi固有のGPIO依存をCIへ持ち込まず、単体テストのimportに必要な純Python依存だけをテスト前にインストールするよう変更した。
