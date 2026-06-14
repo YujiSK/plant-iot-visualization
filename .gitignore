@@ -6,3 +6,5 @@ data.db
 .env
 .codex
 exports/
+notification_state.json
+notification_state.json.tmp

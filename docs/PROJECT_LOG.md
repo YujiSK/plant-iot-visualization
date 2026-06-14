@@ -589,3 +589,26 @@
 
 - GitHub Actionsの新しいPython環境には、2号機モジュールが読み込む`requests`と`python-dotenv`が入っていなかった。
 - Raspberry Pi固有のGPIO依存をCIへ持ち込まず、単体テストのimportに必要な純Python依存だけをテスト前にインストールするよう変更した。
+
+## 2026-06-15
+
+### 2号機のSlack水位異常通知
+
+- 植物管理支援サイクルの第一段階として、`raspberrypi2`の水位低下と回復をIncoming WebhookでSlackへ通知する機能を追加した。
+- `float_switch_state=low_water`の初回だけ警告し、継続中の5分ごとの重複通知を抑止する。
+- `water_ok`が2回連続した場合に回復通知を送る。
+- 通知状態は`notification_state.json`へ保存し、`NOTIFICATION_STATE_PATH`で保存先を変更できる。
+- Slack未設定・送信失敗・状態ファイル処理失敗はログへ残し、センサー読み取りとSupabase送信を停止しない構成にした。
+- 1号機`raspi`は通知対象外とした。
+- 本機能は自動給水ではなく、異常発見・観察・記録を継続しやすくする管理支援機能として位置付ける。
+
+#### 2号機でのWebhook・サービス確認
+
+- 2号機の`.env`に`SLACK_WEBHOOK_URL`が設定済みであることを、URL本体を表示せず確認した。
+- Incoming Webhookへ単体POSTし、HTTP `200`と本文`ok`を確認した。
+- systemd unitが`EnvironmentFile=/home/pi/plant-iot/.env`を使用していることを確認した。
+- `slack_notifier.py`と更新済み`send_sensor_raspberrypi2.py`を2号機へ配備し、リモート構文チェックに成功した。
+- sudoパスワードを非対話で渡せないため、稼働中のpi所有プロセスへ`TERM`を送り、`Restart=always`によるsystemd自動再起動を行った。
+- 再起動後のserviceは`active (running)`で、Supabase POST `201`を確認した。
+- serviceプロセスに`SLACK_WEBHOOK_URL`が渡り、`notification_state.json`が`last_state=water_ok`で生成されたことを確認した。
+- 確認時の実測水位は`water_ok`だったため、実水位低下による`[slack] alert sent: low_water`は未確認である。

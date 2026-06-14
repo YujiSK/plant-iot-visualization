@@ -22,6 +22,13 @@
 - 手動送信reload機能の運用後、`MANUAL_SEND_MIN_INTERVAL_SECONDS` の適正値を調整する
 - pH、EC、溶存酸素センサーの追加とvitalityへの統合
 
+## Slack通知
+
+1. 実際の低水位発生時に`[slack] alert sent: low_water`とSlack受信を確認する
+2. 低水位から2回連続正常へ戻した際の回復通知を確認する
+3. Webhook送信失敗時もSupabase送信が継続することを実機journalで確認する
+4. Slack回復通知を`care_logs`の自動記録へ接続する
+
 ## 注意点
 
 - GitHub Pagesにservice_role keyを置かない

@@ -90,6 +90,8 @@ LIGHT_BRIGHT_LUX=1000
 LIGHT_EVALUATION_START_HOUR=9
 LIGHT_EVALUATION_END_HOUR=15
 MANUAL_SEND_MIN_INTERVAL_SECONDS=60
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/path
+NOTIFICATION_STATE_PATH=/home/pi/plant-iot/notification_state.json
 ```
 
 `TEMP_OFFSET` and `HUMIDITY_OFFSET` were for the old Sense HAT prototype. The
@@ -160,6 +162,20 @@ duplicate rows.
 
 Regular sends are aligned to wall-clock interval boundaries. With the default
 `SENSOR_INTERVAL_SECONDS=300`, readings run at 00, 05, 10, 15, ... minutes.
+
+## Slack water-level notifications
+
+Only `raspberrypi2` sends Slack notifications. Set `SLACK_WEBHOOK_URL` in the
+secondary device's `.env`; never add the real URL to Git. The existing systemd
+unit already reads `/home/pi/plant-iot/.env`.
+
+The first `low_water` reading sends an alert. Continued low-water readings are
+suppressed. A recovery notification is sent after two consecutive `water_ok`
+readings. Notification state is stored in `NOTIFICATION_STATE_PATH`, which
+defaults to `notification_state.json` beside `slack_notifier.py`.
+
+Slack errors are logged with a `[slack]` prefix and do not stop sensor reads or
+Supabase writes.
 
 ## Sensor fields
 

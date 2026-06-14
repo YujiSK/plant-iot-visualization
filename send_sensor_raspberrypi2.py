@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from bh1750 import read_lux
 from ds18b20 import read_temperature
 from float_switch import read_triggered
+from slack_notifier import process_notifications
 from vitality import calculate_basil_vitality
 
 
@@ -177,12 +178,26 @@ def seconds_until_next_send():
     return 0 if remainder < 0.001 else SENSOR_INTERVAL_SECONDS - remainder
 
 
+def process_sensor_cycle():
+    payload = build_payload()
+
+    try:
+        send_to_supabase(payload)
+    except Exception as exc:
+        print(f"sensor send error: {type(exc).__name__}: {exc}", flush=True)
+
+    try:
+        process_notifications(payload)
+    except Exception as exc:
+        print(f"[slack] failed: {type(exc).__name__}: {exc}", flush=True)
+
+
 def main():
     signal.signal(signal.SIGUSR1, request_manual_send)
 
     while True:
         try:
-            send_to_supabase(build_payload())
+            process_sensor_cycle()
         except Exception as exc:
             print(f"sensor error: {type(exc).__name__}: {exc}", flush=True)
 
