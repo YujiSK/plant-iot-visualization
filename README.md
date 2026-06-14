@@ -177,7 +177,9 @@ supabase_multi_device_nullable_ambient_migration.sql
 The deployed environment has these migrations applied. The primary sender
 retains a fallback write path for older database deployments.
 
-GitHub Pages now shows both devices side by side, along with a trend graph and a short project summary.
+GitHub Pages uses a responsive sidebar with three views: current status, an
+interactive trend graph, and a plain-language research overview. Navigation is
+stored in the URL hash (`#home`, `#trends`, or `#about`).
 
 ## Supabase security
 

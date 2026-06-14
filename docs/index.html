@@ -3,952 +3,1007 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🌿 バジルの状態</title>
+  <meta name="theme-color" content="#174c35">
+  <title>Plant IoT 管理支援ダッシュボード</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+    *, *::before, *::after { box-sizing: border-box; }
     :root {
-      --bg1: #0c4a24;
-      --bg2: #166534;
+      --green-950: #12382a;
+      --green-900: #174c35;
+      --green-700: #287456;
+      --green-100: #dff3e8;
+      --blue-700: #286e9b;
+      --blue-100: #e3f1fa;
+      --red-700: #b42318;
+      --red-100: #fee9e7;
+      --yellow-700: #9a6700;
+      --yellow-100: #fff4cf;
+      --ink: #183127;
+      --muted: #607269;
+      --line: #d9e3dd;
+      --surface: #ffffff;
+      --canvas: #f2f6f3;
+      --shadow: 0 12px 34px rgba(23, 76, 53, 0.09);
     }
-
+    html { scroll-behavior: smooth; }
     body {
+      margin: 0;
       min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px 16px 32px;
-      font-family: -apple-system, "Helvetica Neue", "Noto Sans JP",
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP",
                    "Hiragino Kaku Gothic ProN", sans-serif;
-      background: linear-gradient(160deg, var(--bg1) 0%, var(--bg2) 100%);
-      transition: background 0.7s ease;
       -webkit-font-smoothing: antialiased;
     }
-
-    .page-header {
-      width: min(1120px, 100%);
-      color: rgba(255, 255, 255, 0.92);
-      text-align: center;
-      margin-bottom: 18px;
-    }
-
-    .page-title {
-      font-size: clamp(24px, 5vw, 34px);
-      font-weight: 800;
-      letter-spacing: 0.02em;
-      margin-bottom: 8px;
-    }
-
-    .page-subtitle {
-      font-size: clamp(13px, 3vw, 15px);
-      line-height: 1.7;
-      opacity: 0.82;
-    }
-
-    .workspace {
-      width: min(1400px, 100%);
+    button { font: inherit; }
+    .app-shell {
+      min-height: 100dvh;
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 0.9fr);
-      gap: 16px;
-      align-items: start;
+      grid-template-columns: 252px minmax(0, 1fr);
     }
-
-    @media (max-width: 1180px) {
-      .workspace {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .panel {
-      display: grid;
-      gap: 16px;
-      align-content: start;
-    }
-
-    .panel-shell {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.09);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      border-radius: 24px;
-      padding: 18px;
-      color: #fff;
-      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.22);
-    }
-
-    .panel-title {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      margin-bottom: 10px;
-      opacity: 0.9;
-    }
-
-    .panel-lead {
-      font-size: 13px;
-      line-height: 1.7;
-      opacity: 0.78;
-      margin-bottom: 12px;
-    }
-
-    /* ── Glass card ── */
-    .card {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.13);
-      backdrop-filter: blur(28px);
-      -webkit-backdrop-filter: blur(28px);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: 28px;
-      color: #fff;
-      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
-    }
-
-    .device-card {
-      padding: 26px 20px 22px;
-      text-align: left;
-    }
-
-    .device-head {
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100dvh;
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
+      flex-direction: column;
+      padding: 28px 18px 20px;
+      color: #fff;
+      background: linear-gradient(180deg, var(--green-950), var(--green-900));
     }
-
-    .device-title-wrap {
-      min-width: 0;
-    }
-
-    .device-title {
-      font-size: clamp(18px, 4vw, 22px);
+    .brand { padding: 0 12px 28px; }
+    .brand-name {
+      font-size: 25px;
       font-weight: 800;
-      line-height: 1.3;
-      margin-bottom: 6px;
+      letter-spacing: -0.02em;
     }
-
-    .device-subtitle {
-      font-size: 13px;
-      opacity: 0.72;
-      line-height: 1.6;
-    }
-
-    .device-badge {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.16);
-      border-radius: 999px;
-      padding: 7px 12px;
+    .brand-subtitle {
+      margin-top: 5px;
       font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      white-space: nowrap;
+      color: rgba(255,255,255,.67);
+      letter-spacing: .08em;
     }
-
-    .device-badge-dot {
+    .nav-list { display: grid; gap: 7px; }
+    .nav-link {
+      position: relative;
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      min-height: 62px;
+      padding: 10px 12px;
+      border: 0;
+      border-radius: 12px;
+      color: rgba(255,255,255,.72);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      transition: background .18s, color .18s;
+    }
+    .nav-link::before {
+      content: "";
+      position: absolute;
+      left: -18px;
+      width: 4px;
+      height: 36px;
+      border-radius: 0 4px 4px 0;
+      background: transparent;
+    }
+    .nav-link:hover, .nav-link:focus-visible {
+      color: #fff;
+      background: rgba(255,255,255,.09);
+      outline: none;
+    }
+    .nav-link.active {
+      color: #fff;
+      background: rgba(255,255,255,.14);
+    }
+    .nav-link.active::before { background: #83d7a7; }
+    .nav-icon { font-size: 20px; text-align: center; }
+    .nav-title { display: block; font-size: 14px; font-weight: 750; }
+    .nav-description {
+      display: block;
+      margin-top: 2px;
+      font-size: 11px;
+      color: rgba(255,255,255,.55);
+    }
+    .sidebar-status {
+      margin-top: auto;
+      padding: 15px 12px 0;
+      border-top: 1px solid rgba(255,255,255,.13);
+      font-size: 12px;
+      line-height: 1.7;
+      color: rgba(255,255,255,.7);
+    }
+    .connection-line { display: flex; align-items: center; gap: 8px; }
+    .connection-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.8);
+      background: #80d69f;
+      box-shadow: 0 0 0 4px rgba(128,214,159,.12);
     }
-
-    .device-card {
-      padding: 26px 22px 22px;
-      text-align: left;
+    .connection-dot.error { background: #ff8c82; }
+    .sidebar-time { margin-top: 4px; }
+    .main { min-width: 0; padding: 42px clamp(22px, 4vw, 60px) 60px; }
+    .view { display: none; max-width: 1180px; margin: 0 auto; }
+    .view.active { display: block; animation: fade-in .2s ease-out; }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-
-    .plant-title {
-      font-size: clamp(15px, 4vw, 18px);
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      opacity: 0.75;
-      margin-bottom: 24px;
-      text-transform: uppercase;
-    }
-
-    /* ── Score ── */
-    .score-section {
-      margin-bottom: 28px;
-    }
-
-    .score-number {
-      font-size: clamp(80px, 22vw, 112px);
-      font-weight: 800;
-      line-height: 0.9;
-      letter-spacing: -0.04em;
-      margin-bottom: 12px;
-    }
-
-    .status-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.18);
-      border-radius: 40px;
-      padding: 6px 16px 6px 12px;
-      font-size: clamp(14px, 4vw, 17px);
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-
-    .status-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: #fff;
-      flex-shrink: 0;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
-    }
-
-    /* ── Sensor tiles ── */
-    .sensors {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .sensor-tile {
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 18px;
-      padding: 18px 12px 14px;
-    }
-
-    .sensor-value {
-      font-size: clamp(34px, 10vw, 46px);
-      font-weight: 700;
-      line-height: 1;
-      letter-spacing: -0.02em;
-    }
-
-    .sensor-unit {
-      font-size: clamp(16px, 4.5vw, 21px);
-      font-weight: 500;
-      opacity: 0.8;
-      margin-left: 1px;
-    }
-
-    .sensor-label {
-      margin-top: 5px;
-      font-size: clamp(11px, 3vw, 13px);
-      opacity: 0.65;
-      letter-spacing: 0.07em;
-    }
-
-    .sensor-detail {
-      margin-top: 4px;
-      font-size: clamp(10px, 2.8vw, 12px);
-      opacity: 0.55;
-    }
-
-    .status-value {
-      font-size: clamp(24px, 7vw, 32px);
-      letter-spacing: 0;
-    }
-
-    /* ── Message ── */
-    .message {
-      background: rgba(255, 255, 255, 0.12);
-      border-radius: 14px;
-      padding: 13px 18px;
-      font-size: clamp(14px, 4vw, 17px);
-      font-weight: 500;
-      line-height: 1.55;
-      opacity: 0.92;
-    }
-
-    /* ── Analysis ── */
-    .analysis-title {
-      font-size: clamp(17px, 4vw, 20px);
-      font-weight: 800;
-      margin-bottom: 12px;
-      letter-spacing: 0.02em;
-    }
-
-    .analysis-section {
-      padding: 12px 0;
-      border-top: 1px solid rgba(255, 255, 255, 0.16);
-    }
-
-    .analysis-section:first-of-type {
-      border-top: 0;
-      padding-top: 0;
-    }
-
-    .analysis-heading {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
+    .page-heading { margin-bottom: 26px; }
+    .eyebrow {
+      margin: 0 0 7px;
+      color: var(--green-700);
       font-size: 12px;
       font-weight: 800;
-      letter-spacing: 0.08em;
-      opacity: 0.74;
+      letter-spacing: .12em;
+      text-transform: uppercase;
     }
-
-    .level-dot {
-      width: 9px;
-      height: 9px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.7);
-      flex: 0 0 auto;
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.25;
+      letter-spacing: -.035em;
     }
-
-    .level-dot.good { background: #86efac; }
-    .level-dot.warning { background: #facc15; }
-    .level-dot.danger { background: #f87171; }
-
-    .analysis-list {
+    .page-description {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .device-grid {
       display: grid;
-      gap: 7px;
-      list-style: none;
+      grid-template-columns: minmax(0, 1.18fr) minmax(0, .82fr);
+      gap: 18px;
     }
-
-    .analysis-row {
-      display: grid;
-      gap: 4px;
-      padding: 9px 11px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.1);
-      line-height: 1.45;
+    .card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
     }
-
-    .analysis-row-head {
+    .device-card { overflow: hidden; }
+    .device-card.primary { border-top: 5px solid var(--green-700); }
+    .device-card.secondary { border-top: 5px solid var(--blue-700); }
+    .card-body { padding: 24px; }
+    .device-header {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      font-size: 13px;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 23px;
+    }
+    .device-kicker {
+      color: var(--muted);
+      font-size: 12px;
       font-weight: 750;
+      letter-spacing: .08em;
     }
-
-    .analysis-value {
-      opacity: 0.72;
-      font-weight: 650;
-      white-space: nowrap;
-    }
-
-    .analysis-comment,
-    .analysis-action {
-      font-size: 13px;
-      line-height: 1.5;
-      opacity: 0.86;
-    }
-
-    /* ── Loading / error ── */
-    .state-msg {
-      font-size: clamp(17px, 5vw, 22px);
-      opacity: 0.8;
-      padding: 28px 0 20px;
-      display: flex;
+    .device-name { margin: 5px 0 0; font-size: 21px; }
+    .badge {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .spinner {
-      width: 22px;
-      height: 22px;
-      border: 3px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      flex-shrink: 0;
-      animation: spin 0.75s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── Footer ── */
-    .footer {
-      margin-top: 18px;
-      color: rgba(255, 255, 255, 0.5);
-      font-size: 13px;
-      line-height: 1.9;
-      text-align: center;
-    }
-
-    .footer strong {
-      color: rgba(255, 255, 255, 0.8);
-      font-weight: 600;
-    }
-
-    .global-footer {
-      width: min(1400px, 100%);
-      margin-top: 18px;
-    }
-
-    .period-bar {
-      width: 100%;
-      display: flex;
-      gap: 8px;
-      margin: 0 0 18px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .period-btn {
-      padding: 7px 16px;
+      gap: 7px;
+      padding: 7px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.32);
-      background: rgba(255, 255, 255, 0.12);
-      color: rgba(255, 255, 255, 0.86);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+      background: var(--green-100);
+      color: var(--green-700);
     }
-
-    .period-btn:hover {
-      background: rgba(255, 255, 255, 0.22);
-      color: #fff;
-    }
-
-    .period-btn.active {
-      background: rgba(255, 255, 255, 0.32);
-      color: #fff;
-      border-color: rgba(255, 255, 255, 0.68);
-    }
-
-    .card-header-note {
-      margin-top: 6px;
-      font-size: 13px;
-      opacity: 0.7;
-      line-height: 1.55;
-    }
-
-    .chart-panel {
-      margin: 18px 0 16px;
-      padding: 14px 14px 12px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .chart-title-row {
+    .badge.blue { background: var(--blue-100); color: var(--blue-700); }
+    .badge.red { background: var(--red-100); color: var(--red-700); }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .score-row {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 10px;
-      font-size: 13px;
-      line-height: 1.5;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 22px;
     }
-
-    .chart-title {
-      font-weight: 700;
-      opacity: 0.9;
-    }
-
-    .chart-meta {
-      opacity: 0.68;
-      text-align: right;
-    }
-
-    .chart-svg {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    .summary-grid {
+    .score { font-size: 64px; font-weight: 820; line-height: .82; letter-spacing: -.055em; }
+    .score-meta { padding-bottom: 3px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .metric-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin-top: 14px;
     }
-
-    .summary-tile {
-      background: rgba(255, 255, 255, 0.11);
-      border-radius: 16px;
-      padding: 12px 12px 10px;
+    .metric {
+      padding: 14px;
+      border-radius: 14px;
+      background: #f6f9f7;
+      border: 1px solid #e5ece8;
     }
-
-    .summary-label {
+    .metric-label {
+      color: var(--muted);
       font-size: 11px;
-      opacity: 0.68;
-      letter-spacing: 0.06em;
-      margin-bottom: 6px;
+      font-weight: 750;
+      letter-spacing: .05em;
     }
-
-    .summary-value {
-      font-size: 26px;
+    .metric-value {
+      margin-top: 6px;
+      font-size: 24px;
       font-weight: 800;
-      line-height: 1;
+      line-height: 1.2;
     }
-
-    .summary-unit {
-      font-size: 14px;
-      opacity: 0.7;
-      margin-left: 2px;
-      font-weight: 600;
-    }
-
-    .summary-note {
-      margin-top: 5px;
+    .metric-note { margin-top: 4px; color: var(--muted); font-size: 11px; }
+    .card-updated {
+      padding: 13px 24px;
+      border-top: 1px solid var(--line);
+      background: #fafcfb;
+      color: var(--muted);
       font-size: 12px;
-      opacity: 0.62;
-      line-height: 1.45;
     }
-
-    .analysis-list.compact .analysis-row {
-      padding: 8px 10px;
+    .home-bottom {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .notice { padding: 22px; }
+    .notice.alert { background: #fff8f7; border-color: #f4b7b1; }
+    .notice.normal { background: #f7fbf8; border-color: #cce6d5; }
+    .notice-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 9px;
+      color: var(--red-700);
+      font-size: 16px;
+    }
+    .notice.normal .notice-title { color: var(--green-700); }
+    .notice p { margin: 0; color: #4b5f55; line-height: 1.75; }
+    .notice-action {
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px solid rgba(180,35,24,.14);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .research-note { padding: 22px; background: linear-gradient(135deg, #f8fbf9, #edf6f0); }
+    .research-note h2 { margin: 0 0 12px; font-size: 16px; }
+    .research-note p { margin: 0; color: #4d6559; font-size: 14px; line-height: 1.85; }
+    .filter-card { padding: 18px; margin-bottom: 18px; }
+    .filter-row {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+    }
+    .filter-row + .filter-row { margin-top: 12px; }
+    .filter-label { color: var(--muted); font-size: 12px; font-weight: 750; }
+    .segmented { display: flex; gap: 7px; flex-wrap: wrap; }
+    .segment {
+      padding: 8px 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: #52675d;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .segment:hover, .segment:focus-visible { border-color: var(--green-700); outline: none; }
+    .segment.active { color: #fff; background: var(--green-700); border-color: var(--green-700); }
+    .chart-card { padding: 22px; }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .chart-title { margin: 0; font-size: 18px; }
+    .chart-subtitle { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .chart-legend { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .chart-wrap { position: relative; min-height: 360px; }
+    .chart-svg { display: block; width: 100%; height: 360px; overflow: visible; }
+    .chart-tooltip {
+      position: absolute;
+      z-index: 3;
+      min-width: 145px;
+      padding: 9px 11px;
+      border-radius: 10px;
+      color: #fff;
+      background: rgba(18,56,42,.94);
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      font-size: 12px;
+      line-height: 1.55;
+      pointer-events: none;
+      transform: translate(-50%, calc(-100% - 10px));
+    }
+    .chart-empty {
+      min-height: 340px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .stat { padding: 14px; border-radius: 13px; background: #f6f9f7; }
+    .stat-label { color: var(--muted); font-size: 11px; }
+    .stat-value { margin-top: 5px; font-size: 22px; font-weight: 800; }
+    .about-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .about-card { padding: 24px; }
+    .about-card.full { grid-column: 1 / -1; }
+    .about-number {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin-bottom: 16px;
+      border-radius: 10px;
+      color: var(--green-700);
+      background: var(--green-100);
+      font-size: 13px;
+      font-weight: 850;
+    }
+    .about-card h2 { margin: 0 0 10px; font-size: 19px; }
+    .about-card p { margin: 0; color: #52675d; font-size: 14px; line-height: 1.9; }
+    .progress-list { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }
+    .progress-item { display: flex; gap: 10px; align-items: flex-start; color: #52675d; line-height: 1.6; }
+    .check {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 21px;
+      height: 21px;
+      margin-top: 1px;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--green-700);
+      font-size: 12px;
+    }
+    .check.next { color: var(--yellow-700); background: var(--yellow-100); }
+    .loading { padding: 38px; color: var(--muted); text-align: center; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 900px) {
+      .app-shell { display: block; padding-top: 76px; }
+      .sidebar {
+        position: fixed;
+        z-index: 10;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: auto;
+        height: 76px;
+        display: block;
+        padding: 9px 12px;
+      }
+      .brand, .sidebar-status { display: none; }
+      .nav-list { height: 58px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .nav-link {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 2px;
+        min-height: 56px;
+        padding: 5px;
+        text-align: center;
+      }
+      .nav-link::before { left: 20%; right: 20%; bottom: -9px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
+      .nav-icon { display: none; }
+      .nav-title { font-size: 13px; }
+      .nav-description { font-size: 10px; }
+      .main { padding: 28px 16px 42px; }
+      .device-grid, .home-bottom, .about-grid { grid-template-columns: 1fr; }
+      .about-card.full { grid-column: auto; }
+    }
+    @media (max-width: 600px) {
+      .main { padding-inline: 12px; }
+      .page-heading { margin-bottom: 19px; }
+      .device-header { display: grid; }
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .filter-row { grid-template-columns: 1fr; gap: 7px; }
+      .segment { flex: 1 1 auto; text-align: center; padding-inline: 8px; }
+      .chart-header { display: block; }
+      .chart-legend { margin-top: 7px; white-space: normal; }
+      .chart-wrap, .chart-svg { min-height: 280px; height: 280px; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .score { font-size: 54px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
   </style>
 </head>
 <body>
-
-  <header class="page-header">
-    <div class="page-title">Plant IoT 2台ダッシュボード</div>
-    <div class="page-subtitle">1号機は動作確認、2号機は実栽培環境として分けて表示します。最新値と判定を並べて確認できます。</div>
-  </header>
-
-  <div class="workspace">
-    <section class="panel">
-      <div class="panel-shell">
-        <div class="panel-title">最新センサー</div>
-        <div class="panel-lead">1号機は動作確認、2号機は実栽培環境です。左側で最新値とアドバイスを確認します。</div>
-        <div id="device-stack" class="panel"></div>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="メインナビゲーション">
+      <div class="brand">
+        <div class="brand-name">Plant IoT</div>
+        <div class="brand-subtitle">管理支援システム</div>
       </div>
-    </section>
-
-    <aside class="panel">
-      <div class="panel-shell">
-        <div class="panel-title">データ推移</div>
-        <div class="panel-lead">期間を切り替えて、各機体の vitality 推移を追えます。</div>
-        <div id="period-bar" class="period-bar" role="group" aria-label="表示期間切替">
-          <button type="button" data-period="6h" class="period-btn">6時間</button>
-          <button type="button" data-period="24h" class="period-btn active">24時間</button>
-          <button type="button" data-period="7d" class="period-btn">7日</button>
+      <nav class="nav-list" role="tablist" aria-label="画面切替">
+        <button class="nav-link" data-route="home" role="tab" aria-controls="view-home">
+          <span class="nav-icon" aria-hidden="true">⌂</span>
+          <span><span class="nav-title">ホーム</span><span class="nav-description">最新状態</span></span>
+        </button>
+        <button class="nav-link" data-route="trends" role="tab" aria-controls="view-trends">
+          <span class="nav-icon" aria-hidden="true">↗</span>
+          <span><span class="nav-title">データ推移</span><span class="nav-description">時間変化</span></span>
+        </button>
+        <button class="nav-link" data-route="about" role="tab" aria-controls="view-about">
+          <span class="nav-icon" aria-hidden="true">i</span>
+          <span><span class="nav-title">概要</span><span class="nav-description">目的と進捗</span></span>
+        </button>
+      </nav>
+      <div class="sidebar-status" aria-live="polite">
+        <div class="connection-line">
+          <span id="connection-dot" class="connection-dot"></span>
+          <span id="connection-text">データ取得中</span>
         </div>
-        <div id="graph-stack" class="panel"></div>
+        <div id="sidebar-time" class="sidebar-time">最終更新 --:--</div>
       </div>
     </aside>
 
-    <aside class="panel">
-      <div class="panel-shell">
-        <div class="panel-title">目的・背景・進捗</div>
-        <div id="project-summary" class="panel-lead"></div>
-      </div>
-    </aside>
+    <main class="main">
+      <section id="view-home" class="view" data-view="home" role="tabpanel" tabindex="0">
+        <header class="page-heading">
+          <p class="eyebrow">Current status</p>
+          <h1>ホーム</h1>
+          <p class="page-description">2台の最新状態を確認</p>
+        </header>
+        <div id="home-devices" class="device-grid" aria-live="polite">
+          <div class="card loading">2号機のデータを読み込み中...</div>
+          <div class="card loading">1号機のデータを読み込み中...</div>
+        </div>
+        <div class="home-bottom">
+          <section id="attention-panel" class="card notice normal" aria-live="polite">
+            <h2 class="notice-title">状態を確認中</h2>
+            <p>最新データを取得しています。</p>
+          </section>
+          <aside class="card research-note">
+            <h2>研究メモ</h2>
+            <p>写真だけでは貯水部の状態が分からず、センサーだけでは植物の見た目が分かりません。両方を記録して判断します。</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-trends" class="view" data-view="trends" role="tabpanel" tabindex="0">
+        <header class="page-heading">
+          <p class="eyebrow">History</p>
+          <h1>データ推移</h1>
+          <p class="page-description">機体、期間、項目を選び、時間変化を確認します。</p>
+        </header>
+        <section class="card filter-card" aria-label="グラフ表示条件">
+          <div class="filter-row">
+            <span class="filter-label">機体</span>
+            <div id="device-filter" class="segmented">
+              <button class="segment active" data-device="raspberrypi2">2号機・実栽培</button>
+              <button class="segment" data-device="raspi">1号機・動作確認</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label">期間</span>
+            <div id="period-filter" class="segmented">
+              <button class="segment" data-period="6h">6時間</button>
+              <button class="segment active" data-period="24h">24時間</button>
+              <button class="segment" data-period="7d">7日</button>
+              <button class="segment" data-period="30d">30日</button>
+            </div>
+          </div>
+          <div class="filter-row">
+            <span class="filter-label">項目</span>
+            <div id="metric-filter" class="segmented">
+              <button class="segment active" data-metric="vitality">vitality</button>
+              <button class="segment" data-metric="solution_temperature">養液温度</button>
+              <button class="segment" data-metric="light">照度</button>
+              <button class="segment" data-metric="water">水位</button>
+            </div>
+          </div>
+        </section>
+        <section class="card chart-card">
+          <div class="chart-header">
+            <div>
+              <h2 id="chart-title" class="chart-title">2号機・vitality</h2>
+              <div id="chart-subtitle" class="chart-subtitle">24時間の推移</div>
+            </div>
+            <div id="chart-legend" class="chart-legend"></div>
+          </div>
+          <div id="chart-wrap" class="chart-wrap" aria-live="polite">
+            <div class="chart-empty">グラフを読み込み中...</div>
+          </div>
+          <div id="stats-grid" class="stats-grid"></div>
+        </section>
+      </section>
+
+      <section id="view-about" class="view" data-view="about" role="tabpanel" tabindex="0">
+        <header class="page-heading">
+          <p class="eyebrow">Research overview</p>
+          <h1>この研究について</h1>
+          <p class="page-description">プロジェクトの目的、背景、現在地を短時間で把握できます。</p>
+        </header>
+        <div class="about-grid">
+          <article class="card about-card">
+            <div class="about-number">01</div>
+            <h2>目的</h2>
+            <p>植物の異常発見、観察、記録を続けやすくする仕組みを作ります。植物を自動で育てることより、人の管理行動を支えることを重視しています。</p>
+          </article>
+          <article class="card about-card">
+            <div class="about-number">02</div>
+            <h2>背景</h2>
+            <p>過去に複数回バジル栽培に失敗しました。しかし当時は記録が少なく、何が原因だったのかを十分に振り返れませんでした。</p>
+          </article>
+          <article class="card about-card">
+            <div class="about-number">03</div>
+            <h2>着想</h2>
+            <p>写真だけでは貯水部の状態が分かりません。一方、センサーだけでは植物の見た目が分かりません。両方を組み合わせる必要があります。</p>
+          </article>
+          <article class="card about-card">
+            <div class="about-number">04</div>
+            <h2>現在</h2>
+            <ul class="progress-list">
+              <li class="progress-item"><span class="check">✓</span><span>2台のRaspberry Piからデータを取得</span></li>
+              <li class="progress-item"><span class="check">✓</span><span>実際の栽培環境で計測を継続</span></li>
+              <li class="progress-item"><span class="check">✓</span><span>植物写真と観察内容を記録</span></li>
+              <li class="progress-item"><span class="check">✓</span><span>日ごとの分析を開始</span></li>
+            </ul>
+          </article>
+          <article class="card about-card full">
+            <div class="about-number">05</div>
+            <h2>次の段階</h2>
+            <ul class="progress-list">
+              <li class="progress-item"><span class="check next">1</span><span>異常を知らせる通知機能</span></li>
+              <li class="progress-item"><span class="check next">2</span><span>対応後に回復したかを記録する機能</span></li>
+              <li class="progress-item"><span class="check next">3</span><span>写真から観察内容を整理する支援</span></li>
+              <li class="progress-item"><span class="check next">4</span><span>AIを使った観察補助</span></li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </main>
   </div>
-
-  <footer id="footer" class="footer global-footer"></footer>
 
   <script src="config.js"></script>
   <script>
     const BASE = (window.PLANT_CONFIG?.SUPABASE_URL || "").replace(/\/$/, "");
     const KEY = window.PLANT_CONFIG?.SUPABASE_KEY || "";
-
-    const DEVICES = [
-      { id: "raspi", label: "1号機", title: "raspi", note: "動作確認ノード", accent: "#7dd3fc" },
-      { id: "raspberrypi2", label: "2号機", title: "raspberrypi2", note: "実栽培環境", accent: "#fde68a" },
-    ];
-
+    const VALID_ROUTES = new Set(["home", "trends", "about"]);
+    const DEVICE_NAMES = {
+      raspberrypi2: "2号機・実栽培",
+      raspi: "1号機・動作確認",
+    };
     const PERIODS = {
       "6h": { label: "6時間", hours: 6 },
       "24h": { label: "24時間", hours: 24 },
-      "7d": { label: "7日", hours: 24 * 7 },
+      "7d": { label: "7日", hours: 168 },
+      "30d": { label: "30日", hours: 720 },
+    };
+    const METRICS = {
+      vitality: { label: "vitality", unit: "点", min: 0, max: 100, color: "#287456" },
+      solution_temperature: { label: "養液温度", unit: "℃", color: "#d97706" },
+      light: { label: "照度", unit: "lx", min: 0, color: "#b8860b" },
+      water: { label: "水位", unit: "", min: 0, max: 1, color: "#286e9b", stepped: true },
+    };
+    const SELECT_FIELDS = [
+      "temperature", "humidity", "solution_temperature",
+      "water_raw", "water_status", "light_raw", "light_lux", "light_status",
+      "float_switch_triggered", "float_switch_state",
+      "device_id", "location_id", "vitality_score", "message", "created_at",
+    ].join(",");
+    const state = {
+      route: "home",
+      latest: {},
+      trendDevice: "raspberrypi2",
+      trendPeriod: "24h",
+      trendMetric: "vitality",
+      trendRows: [],
     };
 
-    const THEMES = {
-      good:    { bg1: "#0c4a24", bg2: "#166534", label: "良好" },
-      caution: { bg1: "#451a03", bg2: "#78350f", label: "注意" },
-      alert:   { bg1: "#450a0a", bg2: "#7f1d1d", label: "要対応" },
-    };
-
-    const QUERY_FIELDS =
-      "temperature,humidity,solution_temperature,water_raw,water_voltage,water_status,light_raw,light_voltage,light_lux,light_status,float_switch_triggered,float_switch_state,device_id,location_id,vitality_score,message,created_at";
-
-    let selectedPeriod = "24h";
-    let refreshTimer = null;
-
-    function theme(score) {
-      if (score >= 80) return THEMES.good;
-      if (score >= 60) return THEMES.caution;
-      return THEMES.alert;
+    function normalize(row) {
+      if (!row) return null;
+      const waterStatus = row.float_switch_state === "low_water"
+        ? "dry"
+        : row.float_switch_state === "water_ok"
+          ? "enough_water"
+          : row.water_status;
+      return { ...row, water_status: waterStatus };
     }
 
-    function toJst(utcStr) {
-      const s = /Z|[+-]\d{2}:?\d{2}$/.test(utcStr) ? utcStr : `${utcStr}Z`;
-      return new Date(s).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", hour12: false });
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
-    function fmt(v, d = 1) {
-      return v != null ? Number(v).toFixed(d) : "--";
+    function fmt(value, digits = 1) {
+      return value == null || Number.isNaN(Number(value)) ? "--" : Number(value).toFixed(digits);
     }
 
-    function fmtRaw(v) {
-      return v != null ? Number(v).toString() : "--";
-    }
-
-    function normalize(data) {
-      return {
-        ...data,
-        water_raw: data.water_raw ?? data.water_level_raw,
-        water_status:
-          data.water_status ??
-          (data.float_switch_triggered == null ? null : (data.float_switch_triggered ? "dry" : "enough_water")),
-      };
-    }
-
-    function waterLabel(value) {
-      return { dry: "乾燥", transition: "境界", wet: "湿り", enough_water: "十分" }[value] || "不明";
-    }
-
-    function lightLabel(value) {
-      return { dark: "暗い", dim: "やや暗い", bright: "明るい" }[value] || "不明";
-    }
-
-    function vitalitySummary(score) {
-      if (score >= 90) return ["良好", "非常に良好です。"];
-      if (score >= 70) return ["良好", "安定しています。"];
-      if (score >= 50) return ["注意", "少し注意が必要です。"];
-      if (score >= 30) return ["注意", "ストレスが増えています。"];
-      return ["要対応", "給水や環境を確認してください。"];
-    }
-
-    function adviceFor(data) {
-      const d = normalize(data);
-      const score = d.vitality_score ?? 0;
-      const [label, summary] = vitalitySummary(score);
-      const causes = [];
-      const actions = [];
-
-      if (d.water_status === "dry" || d.float_switch_triggered === true) {
-        causes.push("水位が低い可能性");
-        actions.push("まず水位を確認してください。");
-      }
-      if (d.solution_temperature != null && d.solution_temperature >= 30) {
-        causes.push("養液がやや高温");
-        actions.push("養液を少し涼しい場所へ移してください。");
-      }
-      if (d.humidity != null && d.humidity < 40) {
-        causes.push("空気が乾き気味");
-        actions.push("乾燥が続くか見てください。");
-      }
-      if (d.light_status === "dark" || d.light_status === "dim") {
-        causes.push("日中の光が少なめ");
-        actions.push("光の当たり方を確認してください。");
-      }
-      if (!causes.length && score >= 70) {
-        causes.push("大きな異常は見えていません");
-        actions.push("今の管理を続けてください。");
-      }
-
-      return { label, summary, causes: causes.slice(0, 3), actions: actions.slice(0, 3) };
-    }
-
-    function setBackground(score) {
-      const t = theme(score);
-      document.documentElement.style.setProperty("--bg1", t.bg1);
-      document.documentElement.style.setProperty("--bg2", t.bg2);
-    }
-
-    function periodHours() {
-      return PERIODS[selectedPeriod]?.hours || 24;
-    }
-
-    function setPeriodButtons() {
-      document.querySelectorAll(".period-btn").forEach(function(btn) {
-        const active = btn.dataset.period === selectedPeriod;
-        btn.classList.toggle("active", active);
-        btn.setAttribute("aria-pressed", String(active));
+    function toJst(value, options = {}) {
+      if (!value) return "--";
+      const suffix = /Z|[+-]\d{2}:?\d{2}$/.test(value) ? "" : "Z";
+      return new Date(value + suffix).toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        hour12: false,
+        ...options,
       });
     }
 
-    function renderProjectSummary() {
-      document.getElementById("project-summary").innerHTML = `
-        <p>このプロジェクトは、バジルの状態をセンサーと記録で見やすくするためのものです。</p>
-        <p style="margin-top:10px;">今は、1号機で動作確認、2号機で実栽培を進めています。</p>
-        <ul style="margin: 12px 0 0 18px; line-height: 1.7;">
-          <li>何が起きたかをすぐ気づけるようにする</li>
-          <li>写真とセンサーをあわせて確認する</li>
-          <li>作業内容をあとから振り返れるようにする</li>
-          <li>必要な通知や記録を少しずつ自動化する</li>
-        </ul>
-      `;
+    function waterLabel(status) {
+      return { dry: "low_water", transition: "境界", wet: "wet", enough_water: "water_ok" }[status] || "不明";
     }
 
-    function renderDeviceCard(device, data) {
-      const card = document.getElementById(`card-${device.id}`);
-      if (!data) {
-        card.innerHTML = `<div class="state-msg"><span class="spinner"></span>${device.label}を読み込み中…</div>`;
-        return;
-      }
-      const d = normalize(data);
-      const score = d.vitality_score ?? 0;
-      const advice = adviceFor(d);
-      const [stateLabel] = vitalitySummary(score);
-      const lastUpdated = d.created_at ? toJst(d.created_at) : "--";
-
-      card.innerHTML = `
-        <div class="device-head">
-          <div class="device-title-wrap">
-            <div class="device-title">${device.label} ${device.title}</div>
-            <div class="device-subtitle">${device.note}</div>
-            <div class="card-header-note">最終更新 ${lastUpdated}</div>
-          </div>
-          <div class="device-badge"><span class="device-badge-dot"></span><span>${stateLabel}</span></div>
-        </div>
-        <div class="score-section">
-          <div class="score-number">${score}</div>
-          <div class="status-chip"><span class="status-dot"></span><span>${advice.summary}</span></div>
-        </div>
-        <div class="sensors">
-          <div class="sensor-tile">
-            <div class="sensor-value"><span>${fmt(d.temperature)}</span><span class="sensor-unit">℃</span></div>
-            <div class="sensor-label">温度</div>
-            <div class="sensor-detail">湿度 ${fmt(d.humidity)}%</div>
-          </div>
-          <div class="sensor-tile">
-            <div class="sensor-value"><span>${fmt(d.solution_temperature)}</span><span class="sensor-unit">℃</span></div>
-            <div class="sensor-label">養液温度</div>
-            <div class="sensor-detail">${d.solution_temperature != null ? (d.solution_temperature >= 30 ? "高め" : d.solution_temperature < 15 ? "低め" : "適正") : "--"}</div>
-          </div>
-          <div class="sensor-tile">
-            <div class="sensor-value status-value">${waterLabel(d.water_status)}</div>
-            <div class="sensor-label">水位</div>
-            <div class="sensor-detail">raw ${fmtRaw(d.water_raw)}</div>
-          </div>
-          <div class="sensor-tile">
-            <div class="sensor-value status-value">${lightLabel(d.light_status)}</div>
-            <div class="sensor-label">照度</div>
-            <div class="sensor-detail">${d.light_lux != null ? `${fmt(d.light_lux)} lx` : `raw ${fmtRaw(d.light_raw)}`}</div>
-          </div>
-        </div>
-        <div class="message">${advice.summary}</div>
-        <section class="analysis-section">
-          <div class="analysis-heading">気になる点</div>
-          <ul class="analysis-list compact">
-            ${advice.causes.map((item) => `<li class="analysis-row"><div class="analysis-comment">${item}</div></li>`).join("") || '<li class="analysis-row"><div class="analysis-comment">特に大きな異常は見えていません。</div></li>'}
-          </ul>
-        </section>
-        <section class="analysis-section">
-          <div class="analysis-heading">次の一手</div>
-          <ul class="analysis-list compact">
-            ${advice.actions.map((item) => `<li class="analysis-row"><div class="analysis-action">${item}</div></li>`).join("") || '<li class="analysis-row"><div class="analysis-action">様子を見ながら記録を続けてください。</div></li>'}
-          </ul>
-        </section>
-      `;
+    function lightText(row) {
+      if (row.light_lux != null) return `${fmt(row.light_lux)} lx`;
+      if (row.light_raw != null) return `raw ${Math.round(row.light_raw)}`;
+      return "--";
     }
 
-    function aggregateSeries(rows, maxPoints) {
-      const points = rows
-        .map((row) => {
-          const d = normalize(row);
-          const x = new Date(d.created_at).getTime();
-          const y = Number(d.vitality_score ?? 0);
-          return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
-        })
-        .filter(Boolean);
-      if (points.length <= maxPoints) return points;
-      const bucketSize = Math.ceil(points.length / maxPoints);
-      const compressed = [];
-      for (let i = 0; i < points.length; i += bucketSize) {
-        const bucket = points.slice(i, i + bucketSize);
-        const avgY = bucket.reduce((sum, p) => sum + p.y, 0) / bucket.length;
-        compressed.push({ x: bucket[0].x, y: avgY });
-      }
-      return compressed;
+    function routeFromHash() {
+      const route = location.hash.replace(/^#/, "") || "home";
+      return VALID_ROUTES.has(route) ? route : "home";
     }
 
-    function buildChart(points, accent) {
-      if (!points.length) {
-        return '<div class="state-msg" style="padding:16px 0 10px;">この期間のデータがありません</div>';
+    function activateRoute(route) {
+      state.route = route;
+      document.querySelectorAll("[data-view]").forEach((view) => {
+        const active = view.dataset.view === route;
+        view.classList.toggle("active", active);
+        view.hidden = !active;
+      });
+      document.querySelectorAll("[data-route]").forEach((button) => {
+        const active = button.dataset.route === route;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+        button.tabIndex = active ? 0 : -1;
+      });
+      if (route === "trends") loadTrend();
+    }
+
+    function setRoute(route) {
+      if (location.hash !== `#${route}`) location.hash = route;
+      else activateRoute(route);
+    }
+
+    function setupNavigation() {
+      const buttons = [...document.querySelectorAll("[data-route]")];
+      buttons.forEach((button, index) => {
+        button.addEventListener("click", () => setRoute(button.dataset.route));
+        button.addEventListener("keydown", (event) => {
+          if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          let next = index;
+          if (event.key === "Home") next = 0;
+          else if (event.key === "End") next = buttons.length - 1;
+          else if (event.key === "ArrowUp" || event.key === "ArrowLeft") next = (index - 1 + buttons.length) % buttons.length;
+          else next = (index + 1) % buttons.length;
+          buttons[next].focus();
+          setRoute(buttons[next].dataset.route);
+        });
+      });
+      window.addEventListener("hashchange", () => activateRoute(routeFromHash()));
+      activateRoute(routeFromHash());
+    }
+
+    async function fetchRows(query) {
+      const response = await fetch(`${BASE}/rest/v1/sensor_logs?${query}`, {
+        headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    }
+
+    async function fetchLatest(deviceId) {
+      const query = new URLSearchParams({
+        select: SELECT_FIELDS,
+        device_id: `eq.${deviceId}`,
+        order: "created_at.desc",
+        limit: "1",
+      });
+      const rows = await fetchRows(query);
+      return normalize(rows[0] || null);
+    }
+
+    async function fetchTrendRows(deviceId, since) {
+      const pageSize = 1000;
+      const maxRows = 10000;
+      const collected = [];
+      for (let offset = 0; offset < maxRows; offset += pageSize) {
+        const query = new URLSearchParams({
+          select: SELECT_FIELDS,
+          device_id: `eq.${deviceId}`,
+          created_at: `gte.${since}`,
+          order: "created_at.asc",
+          limit: String(pageSize),
+          offset: String(offset),
+        });
+        const page = await fetchRows(query);
+        collected.push(...page);
+        if (page.length < pageSize) break;
       }
+      return collected;
+    }
 
-      const width = 640;
-      const height = 190;
-      const pad = { left: 42, right: 14, top: 14, bottom: 28 };
-      const minX = points[0].x;
-      const maxX = points[points.length - 1].x || (minX + 1);
-      const spanX = Math.max(1, maxX - minX);
-      const innerW = width - pad.left - pad.right;
-      const innerH = height - pad.top - pad.bottom;
-
-      function xScale(x) {
-        return pad.left + ((x - minX) / spanX) * innerW;
+    function renderDeviceCard(deviceId, row) {
+      const primary = deviceId === "raspberrypi2";
+      if (!row) {
+        return `<article class="card device-card ${primary ? "primary" : "secondary"}"><div class="loading">データがありません</div></article>`;
       }
-
-      function yScale(y) {
-        return pad.top + (1 - y / 100) * innerH;
-      }
-
-      const line = points.map((p) => `${xScale(p.x).toFixed(1)},${yScale(p.y).toFixed(1)}`).join(" ");
-      const area = [
-        `M ${xScale(points[0].x).toFixed(1)} ${yScale(points[0].y).toFixed(1)}`,
-        ...points.slice(1).map((p) => `L ${xScale(p.x).toFixed(1)} ${yScale(p.y).toFixed(1)}`),
-        `L ${xScale(points[points.length - 1].x).toFixed(1)} ${height - pad.bottom}`,
-        `L ${xScale(points[0].x).toFixed(1)} ${height - pad.bottom}`,
-        "Z",
-      ].join(" ");
-
-      const grid = [25, 50, 75, 100].map((value) => {
-        const y = yScale(value).toFixed(1);
-        return `
-          <line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
-          <text x="12" y="${(Number(y) + 4).toFixed(1)}" fill="rgba(255,255,255,0.65)" font-size="11">${value}</text>
-        `;
-      }).join("");
-
-      const start = new Date(points[0].x).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false });
-      const end = new Date(points[points.length - 1].x).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false });
-
+      const score = row.vitality_score ?? "--";
+      const lowWater = row.water_status === "dry";
+      const badge = primary
+        ? `<span class="badge ${lowWater ? "red" : ""}"><span class="badge-dot"></span>${lowWater ? "要確認" : "計測中"}</span>`
+        : `<span class="badge blue"><span class="badge-dot"></span>動作確認値</span>`;
+      const metrics = primary ? [
+        ["水位", waterLabel(row.water_status), lowWater ? "貯水部を確認" : "現在の判定"],
+        ["養液温度", `${fmt(row.solution_temperature)}℃`, "根元の水温"],
+        ["照度", lightText(row), "センサー位置の値"],
+        ["設置状態", "実栽培", "バジル栽培キット"],
+      ] : [
+        ["気温", `${fmt(row.temperature)}℃`, "室内の確認値"],
+        ["湿度", `${fmt(row.humidity)}%`, "室内の確認値"],
+        ["水位", "未設置", "植物状態には使用しない"],
+        ["用途", "動作確認", "送信・センサー確認"],
+      ];
       return `
-        <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="健康スコアの推移">
-          <rect x="0" y="0" width="${width}" height="${height}" rx="16" fill="rgba(255,255,255,0.04)"></rect>
-          ${grid}
-          <path d="${area}" fill="${accent}22"></path>
-          <polyline points="${line}" fill="none" stroke="${accent}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"></polyline>
-          <circle cx="${xScale(points[points.length - 1].x).toFixed(1)}" cy="${yScale(points[points.length - 1].y).toFixed(1)}" r="4.5" fill="${accent}" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"></circle>
-          <text x="${pad.left}" y="${height - 8}" fill="rgba(255,255,255,0.72)" font-size="11">${start}</text>
-          <text x="${width - pad.right}" y="${height - 8}" fill="rgba(255,255,255,0.72)" font-size="11" text-anchor="end">${end}</text>
-        </svg>
-      `;
+        <article class="card device-card ${primary ? "primary" : "secondary"}">
+          <div class="card-body">
+            <div class="device-header">
+              <div>
+                <div class="device-kicker">${primary ? "PRIMARY / CULTIVATION" : "SECONDARY / TEST"}</div>
+                <h2 class="device-name">${DEVICE_NAMES[deviceId]}</h2>
+              </div>
+              ${badge}
+            </div>
+            <div class="score-row">
+              <div class="score">${escapeHtml(score)}</div>
+              <div class="score-meta">vitality<br>${primary ? "環境状態の目安" : "技術確認用"}</div>
+            </div>
+            <div class="metric-grid">
+              ${metrics.map(([label, value, note]) => `
+                <div class="metric">
+                  <div class="metric-label">${escapeHtml(label)}</div>
+                  <div class="metric-value">${escapeHtml(value)}</div>
+                  <div class="metric-note">${escapeHtml(note)}</div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+          <div class="card-updated">最終更新 ${escapeHtml(toJst(row.created_at))}</div>
+        </article>`;
     }
 
-    function renderGraphCard(device, rows) {
-      const box = document.getElementById(`graph-${device.id}`);
-      if (!rows.length) {
-        box.innerHTML = `<div class="state-msg"><span class="spinner"></span>${device.label}のグラフを読み込み中…</div>`;
+    function renderHome() {
+      const primary = state.latest.raspberrypi2;
+      const secondary = state.latest.raspi;
+      document.getElementById("home-devices").innerHTML =
+        renderDeviceCard("raspberrypi2", primary) + renderDeviceCard("raspi", secondary);
+      const panel = document.getElementById("attention-panel");
+      if (primary?.water_status === "dry") {
+        panel.className = "card notice alert";
+        panel.innerHTML = `
+          <h2 class="notice-title">要確認</h2>
+          <p>2号機の貯水部が低水位です。写真上の培地表面の湿りとは分けて確認します。</p>
+          <div class="notice-action">推奨対応：貯水部とフロートスイッチを確認</div>`;
+      } else {
+        panel.className = "card notice normal";
+        panel.innerHTML = `
+          <h2 class="notice-title">現在の要確認事項</h2>
+          <p>${primary ? "2号機で緊急性の高い水位異常は検出されていません。" : "2号機の最新データを取得できませんでした。"}</p>
+          <div class="notice-action">写真と観察記録もあわせて確認します。</div>`;
+      }
+      const latestTime = [primary?.created_at, secondary?.created_at].filter(Boolean).sort().at(-1);
+      document.getElementById("sidebar-time").textContent =
+        `最終更新 ${latestTime ? toJst(latestTime, { hour: "2-digit", minute: "2-digit" }) : "--:--"}`;
+    }
+
+    async function loadLatest() {
+      if (!BASE || !KEY) throw new Error("Supabase設定がありません");
+      const [primary, secondary] = await Promise.all([
+        fetchLatest("raspberrypi2"),
+        fetchLatest("raspi"),
+      ]);
+      state.latest = { raspberrypi2: primary, raspi: secondary };
+      renderHome();
+      setConnection(true);
+    }
+
+    function setConnection(ok) {
+      document.getElementById("connection-dot").classList.toggle("error", !ok);
+      document.getElementById("connection-text").textContent = ok ? "データ更新中" : "データ取得エラー";
+    }
+
+    function setupFilters() {
+      document.querySelectorAll(".segment").forEach((button) => {
+        button.addEventListener("click", () => {
+          const group = button.parentElement;
+          group.querySelectorAll(".segment").forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+          if (button.dataset.device) state.trendDevice = button.dataset.device;
+          if (button.dataset.period) state.trendPeriod = button.dataset.period;
+          if (button.dataset.metric) state.trendMetric = button.dataset.metric;
+          loadTrend();
+        });
+      });
+    }
+
+    function metricValue(row, metric) {
+      if (metric === "vitality") return row.vitality_score;
+      if (metric === "solution_temperature") return row.solution_temperature;
+      if (metric === "light") return row.light_lux ?? row.light_raw;
+      if (metric === "water") return normalize(row).water_status === "dry" ? 0 : 1;
+      return null;
+    }
+
+    async function loadTrend() {
+      if (state.route !== "trends" || !BASE || !KEY) return;
+      const period = PERIODS[state.trendPeriod];
+      const since = new Date(Date.now() - period.hours * 3600_000).toISOString();
+      document.getElementById("chart-wrap").innerHTML = '<div class="chart-empty">グラフを読み込み中...</div>';
+      try {
+        state.trendRows = (await fetchTrendRows(state.trendDevice, since)).map(normalize);
+        renderChart();
+      } catch (error) {
+        console.error(error);
+        document.getElementById("chart-wrap").innerHTML = '<div class="chart-empty">データを取得できませんでした。</div>';
+      }
+    }
+
+    function samplePoints(points, maxPoints = 600) {
+      if (points.length <= maxPoints) return points;
+      const step = Math.ceil(points.length / maxPoints);
+      return points.filter((_, index) => index % step === 0 || index === points.length - 1);
+    }
+
+    function renderChart() {
+      const config = METRICS[state.trendMetric];
+      const raw = state.trendRows
+        .map((row) => ({ time: new Date(row.created_at).getTime(), value: metricValue(row, state.trendMetric) }))
+        .filter((point) => Number.isFinite(point.time) && point.value != null && Number.isFinite(Number(point.value)))
+        .map((point) => ({ ...point, value: Number(point.value) }));
+      const points = samplePoints(raw);
+      document.getElementById("chart-title").textContent = `${DEVICE_NAMES[state.trendDevice]}・${config.label}`;
+      document.getElementById("chart-subtitle").textContent = `${PERIODS[state.trendPeriod].label}の推移`;
+      document.getElementById("chart-legend").textContent =
+        state.trendMetric === "water" ? "上: water_ok / 下: low_water" : `単位: ${config.unit}`;
+      if (!points.length) {
+        document.getElementById("chart-wrap").innerHTML = '<div class="chart-empty">この条件のデータはありません。</div>';
+        renderStats([], config);
         return;
       }
-
-      const latest = normalize(rows[rows.length - 1]);
-      const points = aggregateSeries(rows, 120);
-      const values = rows.map((row) => Number(normalize(row).vitality_score ?? 0)).filter(Number.isFinite);
-      const min = values.length ? Math.min(...values) : null;
-      const avg = values.length ? (values.reduce((sum, v) => sum + v, 0) / values.length) : null;
-      const max = values.length ? Math.max(...values) : null;
-
-      box.innerHTML = `
-        <div class="panel-shell" style="padding: 16px 16px 14px; margin-bottom: 14px;">
-          <div class="panel-title" style="margin-bottom: 6px;">${device.label} ${device.title}</div>
-          <div class="panel-lead" style="margin-bottom: 10px;">${PERIODS[selectedPeriod].label} の変化をまとめたグラフです。</div>
-          <div class="chart-title-row">
-            <div class="chart-title">健康スコア</div>
-            <div class="chart-meta">最小 ${min != null ? min : "--"} / 平均 ${avg != null ? avg.toFixed(1) : "--"} / 最大 ${max != null ? max : "--"}</div>
-          </div>
-          ${buildChart(points, device.accent)}
-          <div class="summary-grid" style="margin-top: 10px;">
-            <div class="summary-tile"><div class="summary-label">今の点数</div><div class="summary-value">${latest.vitality_score ?? "--"}</div></div>
-            <div class="summary-tile"><div class="summary-label">水位</div><div class="summary-value">${waterLabel(latest.water_status)}</div></div>
-            <div class="summary-tile"><div class="summary-label">照度</div><div class="summary-value">${lightLabel(latest.light_status)}</div></div>
-            <div class="summary-tile"><div class="summary-label">養液温度</div><div class="summary-value">${fmt(latest.solution_temperature)}<span class="summary-unit">℃</span></div></div>
-          </div>
-        </div>
-      `;
-    }
-
-    function updateProjectSummary() {
-      document.getElementById("project-summary").innerHTML = `
-        <p>このプロジェクトは、バジルの状態をセンサー、写真、記録で見やすくするためのものです。</p>
-        <p style="margin-top:10px;">1号機と2号機を分けて運用し、実際の栽培に役立つ見方を作っています。</p>
-        <ul style="margin: 12px 0 0 18px; line-height: 1.75;">
-          <li>異変に早く気づけるようにする</li>
-          <li>写真とセンサーをあわせて確認する</li>
-          <li>作業内容をあとから振り返れるようにする</li>
-          <li>必要な通知や記録を少しずつ自動化する</li>
-        </ul>
-        <div style="margin-top:14px; font-size:13px; line-height:1.7; opacity:0.8;">
-          現在は、実栽培の観察を続けながら、画面と記録の使いやすさを整えています。
-        </div>
-      `;
-    }
-
-    async function fetchRows(device) {
-      const hours = periodHours();
-      const since = new Date(Date.now() - hours * 3600_000).toISOString();
-      const res = await fetch(
-        `${BASE}/rest/v1/sensor_logs` +
-        `?select=${encodeURIComponent(QUERY_FIELDS)}` +
-        `&device_id=eq.${encodeURIComponent(device.id)}` +
-        `&created_at=gte.${encodeURIComponent(since)}` +
-        `&order=created_at.asc&limit=2500`,
-        { headers: { apikey: KEY, Authorization: `Bearer ${KEY}` } }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    }
-
-    function renderFooter(rowsByDevice) {
-      const latest = Object.values(rowsByDevice)
-        .flat()
-        .map((row) => row.created_at)
-        .filter(Boolean)
-        .sort()
-        .pop();
-      const footer = document.getElementById("footer");
-      footer.innerHTML = "";
-      const strong = document.createElement("strong");
-      strong.textContent = latest
-        ? `${toJst(latest)} / ${PERIODS[selectedPeriod].label}`
-        : PERIODS[selectedPeriod].label;
-      footer.append("最終更新：", strong);
-    }
-
-    async function loadAll() {
-      if (!BASE || !KEY) {
-        document.getElementById("device-stack").innerHTML = '<div class="state-msg">設定が見つかりません</div>';
-        document.getElementById("graph-stack").innerHTML = '<div class="state-msg">設定が見つかりません</div>';
-        return;
+      const width = 900;
+      const height = 360;
+      const pad = { left: 60, right: 20, top: 22, bottom: 48 };
+      const start = points[0].time;
+      const end = points.at(-1).time === start ? start + 1 : points.at(-1).time;
+      const values = points.map((point) => point.value);
+      let min = config.min ?? Math.min(...values);
+      let max = config.max ?? Math.max(...values);
+      if (min === max) { min -= 1; max += 1; }
+      if (config.min == null) {
+        const margin = (max - min) * .12 || 1;
+        min -= margin;
+        max += margin;
       }
-
-      setPeriodButtons();
-      const results = {};
-      const states = {};
-
-      await Promise.all(DEVICES.map(async (device) => {
-        try {
-          const rows = await fetchRows(device);
-          results[device.id] = rows;
-          states[device.id] = rows.length ? normalize(rows[rows.length - 1]) : null;
-        } catch (err) {
-          console.error(device.id, err);
-          results[device.id] = [];
-          states[device.id] = null;
+      const x = (time) => pad.left + ((time - start) / (end - start)) * (width - pad.left - pad.right);
+      const y = (value) => pad.top + (1 - (value - min) / (max - min)) * (height - pad.top - pad.bottom);
+      const expectedInterval = state.trendPeriod === "30d" ? 6 * 3600_000 : 20 * 60_000;
+      const segments = [];
+      let current = [];
+      points.forEach((point, index) => {
+        if (index && point.time - points[index - 1].time > expectedInterval) {
+          if (current.length) segments.push(current);
+          current = [];
         }
-      }));
-
-      const latestScores = Object.values(states).map((row) => row?.vitality_score).filter((v) => v != null);
-      setBackground(latestScores.length ? Math.min(...latestScores) : 80);
-
-      const deviceStack = document.getElementById("device-stack");
-      deviceStack.innerHTML = "";
-      DEVICES.forEach((device) => {
-        const block = document.createElement("div");
-        block.className = "panel";
-        block.innerHTML = `<main id="card-${device.id}" class="card device-card"></main>`;
-        deviceStack.appendChild(block);
-        renderDeviceCard(device, states[device.id]);
+        current.push(point);
       });
-
-      const graphStack = document.getElementById("graph-stack");
-      graphStack.innerHTML = "";
-      DEVICES.forEach((device) => {
-        const block = document.createElement("div");
-        block.innerHTML = `<div id="graph-${device.id}"></div>`;
-        graphStack.appendChild(block);
-        renderGraphCard(device, results[device.id] || []);
+      if (current.length) segments.push(current);
+      const paths = segments.map((segment) => {
+        if (config.stepped) {
+          return segment.map((point, index) => {
+            if (!index) return `M ${x(point.time)} ${y(point.value)}`;
+            const previous = segment[index - 1];
+            return `H ${x(point.time)} V ${y(point.value)}`;
+          }).join(" ");
+        }
+        return segment.map((point, index) => `${index ? "L" : "M"} ${x(point.time)} ${y(point.value)}`).join(" ");
+      }).join("");
+      const ticks = [0, .25, .5, .75, 1];
+      const yGrid = ticks.map((ratio) => {
+        const value = max - (max - min) * ratio;
+        const py = pad.top + ratio * (height - pad.top - pad.bottom);
+        const label = state.trendMetric === "water"
+          ? (ratio === 0 ? "water_ok" : ratio === 1 ? "low_water" : "")
+          : `${value.toFixed(max - min < 10 ? 1 : 0)}`;
+        return `<line x1="${pad.left}" y1="${py}" x2="${width - pad.right}" y2="${py}" stroke="#dce6e0" />
+                <text x="${pad.left - 9}" y="${py + 4}" text-anchor="end" fill="#65786e" font-size="11">${label}</text>`;
+      }).join("");
+      const xTicks = [0, .25, .5, .75, 1].map((ratio) => {
+        const time = start + (end - start) * ratio;
+        const px = pad.left + ratio * (width - pad.left - pad.right);
+        const label = toJst(new Date(time).toISOString(), state.trendPeriod === "30d" || state.trendPeriod === "7d"
+          ? { month: "numeric", day: "numeric" }
+          : { hour: "2-digit", minute: "2-digit" });
+        return `<text x="${px}" y="${height - 16}" text-anchor="middle" fill="#65786e" font-size="11">${label}</text>`;
+      }).join("");
+      const hitPoints = points.map((point, index) =>
+        `<circle class="chart-hit" data-index="${index}" cx="${x(point.time)}" cy="${y(point.value)}" r="10" fill="transparent" tabindex="0" />`
+      ).join("");
+      document.getElementById("chart-wrap").innerHTML = `
+        <svg class="chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(config.label)}の推移">
+          ${yGrid}${xTicks}
+          <path d="${paths}" fill="none" stroke="${config.color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+          ${hitPoints}
+        </svg>
+        <div id="chart-tooltip" class="chart-tooltip" hidden></div>`;
+      const tooltip = document.getElementById("chart-tooltip");
+      document.querySelectorAll(".chart-hit").forEach((hit) => {
+        const show = () => {
+          const point = points[Number(hit.dataset.index)];
+          const rect = document.getElementById("chart-wrap").getBoundingClientRect();
+          tooltip.hidden = false;
+          tooltip.style.left = `${(x(point.time) / width) * rect.width}px`;
+          tooltip.style.top = `${(y(point.value) / height) * rect.height}px`;
+          const value = state.trendMetric === "water"
+            ? (point.value ? "water_ok" : "low_water")
+            : `${fmt(point.value)} ${config.unit}`;
+          tooltip.innerHTML = `<strong>${escapeHtml(value)}</strong><br>${escapeHtml(toJst(new Date(point.time).toISOString()))}`;
+        };
+        hit.addEventListener("mouseenter", show);
+        hit.addEventListener("focus", show);
+        hit.addEventListener("mouseleave", () => { tooltip.hidden = true; });
+        hit.addEventListener("blur", () => { tooltip.hidden = true; });
       });
-
-      renderProjectSummary();
-      renderFooter(results);
+      renderStats(raw.map((point) => point.value), config);
     }
 
-    document.querySelectorAll(".period-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        selectedPeriod = btn.dataset.period;
-        loadAll();
-      });
-    });
+    function renderStats(values, config) {
+      const grid = document.getElementById("stats-grid");
+      if (!values.length) { grid.innerHTML = ""; return; }
+      const stats = state.trendMetric === "water"
+        ? [
+            ["最小", values.some((value) => value === 0) ? "low_water" : "water_ok"],
+            ["平均", `${Math.round(values.reduce((sum, value) => sum + value, 0) / values.length * 100)}% ok`],
+            ["最大", values.some((value) => value === 1) ? "water_ok" : "low_water"],
+            ["最新", values.at(-1) ? "water_ok" : "low_water"],
+          ]
+        : [
+            ["最小", `${fmt(Math.min(...values))} ${config.unit}`],
+            ["平均", `${fmt(values.reduce((sum, value) => sum + value, 0) / values.length)} ${config.unit}`],
+            ["最大", `${fmt(Math.max(...values))} ${config.unit}`],
+            ["最新", `${fmt(values.at(-1))} ${config.unit}`],
+          ];
+      grid.innerHTML = stats.map(([label, value]) =>
+        `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${escapeHtml(value)}</div></div>`
+      ).join("");
+    }
 
-    loadAll();
-    refreshTimer = setInterval(loadAll, 30_000);
+    async function refresh() {
+      try {
+        await loadLatest();
+        if (state.route === "trends") await loadTrend();
+      } catch (error) {
+        console.error(error);
+        setConnection(false);
+      }
+    }
+
+    setupNavigation();
+    setupFilters();
+    refresh();
+    setInterval(refresh, 30_000);
   </script>
 </body>
 </html>
