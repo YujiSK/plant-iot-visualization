@@ -648,3 +648,10 @@
 - Slack App側のRequest URL公開、Event subscription設定、実チャンネルID設定、実投稿による疎通確認は未実施。
 - 現行`care_logs`スキーマに合わせたため、SlackメタデータはJSONではなく`note`へテキスト保存している。
 - `SUPABASE_KEY`で`care_logs` insertと`sensor_logs` selectが許可されている必要がある。
+
+#### 直近2日間の観察補足
+
+- 2026-06-15から06-16にかけて、2号機`raspberrypi2`の`low_water`は21件から1件へ減少し、`water_ok`が大半を占める状態に戻った。
+- 2号機のvitality平均も6/15の85.28から6/16の94.36へ上昇し、設置直後の揺れは収束方向にあると読める。
+- 6/16の平均照度は6/15より高く、透明な容器へ移した影響で周囲光の入り方が変化した可能性があるため、今後は同一条件で比較する。
+- 1号機`raspi`は引き続き動作確認用ノードで、`water_status=dry`とvitality 25の固定挙動を示した。
