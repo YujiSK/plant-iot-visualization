@@ -590,6 +590,7 @@
 - GitHub Actionsの新しいPython環境には、2号機モジュールが読み込む`requests`と`python-dotenv`が入っていなかった。
 - Raspberry Pi固有のGPIO依存をCIへ持ち込まず、単体テストのimportに必要な純Python依存だけをテスト前にインストールするよう変更した。
 
+<<<<<<< HEAD
 ## 2026-06-15
 
 ### 2号機のSlack水位異常通知
@@ -612,3 +613,38 @@
 - 再起動後のserviceは`active (running)`で、Supabase POST `201`を確認した。
 - serviceプロセスに`SLACK_WEBHOOK_URL`が渡り、`notification_state.json`が`last_state=water_ok`で生成されたことを確認した。
 - 確認時の実測水位は`water_ok`だったため、実水位低下による`[slack] alert sent: low_water`は未確認である。
+
+## 2026-06-16
+
+### Slack写真観察ログ Phase 1
+
+#### 実装したこと
+
+- `slack_observation_bot.py`を追加し、Slack Events APIの`/slack/events`で写真投稿イベントを受け取る独立プロセスを用意した。
+- `SLACK_OBSERVATION_CHANNEL_ID`で指定したチャンネルの`message`イベントだけを対象にした。
+- `files`内の`mimetype`が`image/`で始まるSlackファイルだけを観察写真として扱うようにした。
+- テキストのみ、別チャンネル、bot自身の投稿、画像以外のファイルは無視するようにした。
+- Slack投稿時刻をJSTへ変換し、SlackチャンネルID、投稿者ID、message ts、file id、file名、MIME type、Slack file URLを`care_logs.note`へ保存するようにした。
+- 現行`care_logs`には`metadata`、`source`、`observed_at`カラムがないため、スキーマ変更は行わず既存カラムへ合わせた。
+- 観察時刻の前後10分から、`device_id=raspberrypi2`の最寄り`sensor_logs`を検索し、見つかった場合は`sensor_log_id`、`vitality_score`、水位、養液温度、照度を記録するようにした。
+- 最寄り`sensor_logs`検索に失敗、または該当なしの場合でも、`care_logs`保存は継続するようにした。
+- 保存成功時はSlackスレッドへ「観察写真を記録しました」と返信し、失敗時は警告メッセージを返すようにした。
+- Slack返信に失敗しても`care_logs`登録結果は維持するようにした。
+- AI画像解析、植物診断、再撮影指示、観察品質スコア、Supabase Storageへの画像保存、Flutter連携、LINE連携は実装対象外として維持した。
+
+#### README更新
+
+- Slack Bot Token方式の環境変数、OAuth scopes、Event subscription、実行コマンドを追記した。
+- 今回の機能はAI診断ではなく、観察写真を継続的に残し、センサー値や日次分析、`care_logs`と後から比較するための観察記録機能であることを明記した。
+- 将来フェーズとして、発芽、子葉、本葉、水位確認などのAI観察支援を追加する方針を記録した。
+
+#### 検証
+
+- `python -m py_compile main.py send_sensor.py send_sensor_raspi.py send_sensor_raspberrypi2.py bh1750.py ds18b20.py float_switch.py vitality.py care_log.py slack_notifier.py slack_observation_bot.py` 成功。
+- `python -m unittest test_vitality.py test_ds18b20.py test_bh1750.py test_float_switch.py test_slack_observation_bot.py` 成功。30件成功。
+
+#### 注意点
+
+- Slack App側のRequest URL公開、Event subscription設定、実チャンネルID設定、実投稿による疎通確認は未実施。
+- 現行`care_logs`スキーマに合わせたため、SlackメタデータはJSONではなく`note`へテキスト保存している。
+- `SUPABASE_KEY`で`care_logs` insertと`sensor_logs` selectが許可されている必要がある。

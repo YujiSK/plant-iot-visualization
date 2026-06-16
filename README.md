@@ -94,6 +94,33 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/path
 NOTIFICATION_STATE_PATH=/home/pi/plant-iot/notification_state.json
 ```
 
+Slack photo observation logging uses the Slack Bot Token flow, not the existing
+incoming webhook used for water-level alerts. Add these values only on the
+machine running `slack_observation_bot.py`:
+
+```dotenv
+SLACK_BOT_TOKEN=xoxb-your-bot-token
+SLACK_SIGNING_SECRET=your-slack-signing-secret
+SLACK_OBSERVATION_CHANNEL_ID=C0123456789
+```
+
+The observation bot also reads `SUPABASE_URL`, `SUPABASE_KEY`, `DEVICE_ID`, and
+`LOCATION_ID`. For the current deployment, run it with `DEVICE_ID=raspberrypi2`
+and `LOCATION_ID=location-b`. Keep all Slack tokens and Supabase keys in `.env`;
+do not commit them.
+
+Slack App settings for photo observation:
+
+- OAuth scopes: `channels:history`, `files:read`, `chat:write`
+- Event subscription: subscribe to message events for the observation channel
+- Request URL: `https://<public-host>/slack/events`
+- Observation target: set `SLACK_OBSERVATION_CHANNEL_ID` to `#plant-observation`
+
+The bot ignores text-only posts, non-image files, bot messages, and channels
+other than `SLACK_OBSERVATION_CHANNEL_ID`. It records only Slack file metadata
+and the nearest `sensor_logs` summary when available. It does not save image
+binaries to Supabase Storage.
+
 `TEMP_OFFSET` and `HUMIDITY_OFFSET` were for the old Sense HAT prototype. The
 current DHT11 runtime intentionally does not apply offset correction.
 
@@ -139,6 +166,9 @@ python send_sensor_raspi.py
 
 # raspberrypi2
 python send_sensor_raspberrypi2.py
+
+# Slack photo observation Events API receiver
+uvicorn slack_observation_bot:app --host 0.0.0.0 --port 8010
 ```
 
 `send_sensor.py` remains as a compatibility wrapper for the existing
@@ -206,3 +236,20 @@ Enable Row Level Security on `sensor_logs` and apply `supabase_policies.sql`.
 The static UI only needs anonymous read access. Browser writes should stay disabled. Sensor writes should use `SUPABASE_SENSOR_KEY` on the Raspberry Pi service, not a secret embedded in browser code.
 
 Do not reuse `SUPABASE_KEY` for sensor writes. `SUPABASE_KEY` is published in `docs/config.js` for the browser and should only be able to read rows. `SUPABASE_SENSOR_KEY` must stay only in `.env` on the Raspberry Pi.
+
+## Slack observation logs
+
+`slack_observation_bot.py` records image posts in `#plant-observation` as
+`care_logs` rows with `action_type=checked`. The current `care_logs` schema does
+not have `metadata`, `source`, or `observed_at` columns, so Slack channel ID,
+user ID, message timestamp, file ID, file name, MIME type, file URL, and the
+Slack posting time in JST are written into `note`.
+
+This feature is an observation-recording feature, not AI diagnosis. Its purpose
+is to keep plant photos in the project timeline and make later comparison with
+sensor values, `daily_sensor_analysis`, and `care_logs` easier.
+
+Future phases may add AI observation support for extracting visible facts such
+as germination, cotyledons, true leaves, yellowing, wilting, medium wetness, and
+whether the reservoir is visible. Retake guidance and observation quality scores
+are intentionally out of scope for the first phase.
