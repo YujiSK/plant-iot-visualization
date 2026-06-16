@@ -112,7 +112,7 @@ def build_slack_message(event, payload, occurred_at=None):
         "2号機の水位が正常に戻りました。\n\n"
         f"{common}"
         f"時刻: {occurred_at}\n\n"
-        "次の段階では、この回復イベントをcare_logsへ自動記録します。"
+        "この回復イベントはcare_logsへの自動記録対象として処理します。"
     )
 
 
@@ -147,6 +147,7 @@ def process_notifications(
 
     events = detect_alerts(payload, state, recovery_confirmations)
     low_water = state["low_water"]
+    sent_events = []
 
     for event in events:
         if event == "duplicate_low_water":
@@ -171,10 +172,11 @@ def process_notifications(
             low_water["last_recovery_at"] = occurred_at
             low_water["water_ok_streak"] = 0
             print("[slack] recovery sent: water_ok", flush=True)
+        sent_events.append((event, occurred_at))
 
     try:
         save_notification_state(state, state_path)
     except Exception as exc:
         print(f"[slack] failed: state save: {type(exc).__name__}: {exc}", flush=True)
 
-    return events
+    return sent_events
