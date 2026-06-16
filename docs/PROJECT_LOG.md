@@ -590,7 +590,6 @@
 - GitHub Actionsの新しいPython環境には、2号機モジュールが読み込む`requests`と`python-dotenv`が入っていなかった。
 - Raspberry Pi固有のGPIO依存をCIへ持ち込まず、単体テストのimportに必要な純Python依存だけをテスト前にインストールするよう変更した。
 
-<<<<<<< HEAD
 ## 2026-06-15
 
 ### 2号機のSlack水位異常通知

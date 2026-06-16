@@ -5,6 +5,56 @@ import time
 from datetime import timedelta
 
 
+class FloatSwitchStateMonitor:
+    """Confirm float transitions after consecutive stable samples."""
+
+    def __init__(
+        self,
+        low_water_confirmations=3,
+        water_ok_confirmations=10,
+        initial_state=None,
+    ):
+        self.confirmations = {
+            "low_water": max(1, int(low_water_confirmations)),
+            "water_ok": max(1, int(water_ok_confirmations)),
+        }
+        self.confirmed_state = (
+            initial_state if initial_state in {"low_water", "water_ok"} else None
+        )
+        self.candidate_state = None
+        self.candidate_count = 0
+
+    def observe(self, triggered):
+        if triggered is None:
+            self.candidate_state = None
+            self.candidate_count = 0
+            return None
+
+        observed_state = "low_water" if triggered else "water_ok"
+        if observed_state == self.confirmed_state:
+            self.candidate_state = None
+            self.candidate_count = 0
+            return None
+
+        if observed_state == self.candidate_state:
+            self.candidate_count += 1
+        else:
+            self.candidate_state = observed_state
+            self.candidate_count = 1
+
+        if self.candidate_count < self.confirmations[observed_state]:
+            return None
+
+        previous_state = self.confirmed_state
+        self.confirmed_state = observed_state
+        self.candidate_state = None
+        self.candidate_count = 0
+
+        if previous_state is None and observed_state == "water_ok":
+            return None
+        return observed_state
+
+
 def majority_triggered(samples) -> bool:
     values = [bool(value) for value in samples]
     if not values:
@@ -38,4 +88,3 @@ def read_triggered(
             if index + 1 < samples:
                 time.sleep(max(0.0, interval_seconds))
     return majority_triggered(results)
-

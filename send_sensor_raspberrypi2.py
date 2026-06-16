@@ -11,9 +11,10 @@ import requests
 from dotenv import load_dotenv
 
 from bh1750 import read_lux
+from care_log import send_recovery_care_log
 from ds18b20 import read_temperature
-from float_switch import read_triggered
-from slack_notifier import process_notifications
+from float_switch import FloatSwitchStateMonitor, read_triggered
+from slack_notifier import load_notification_state, process_notifications
 from vitality import calculate_basil_vitality
 
 
@@ -30,6 +31,15 @@ DS18B20_SENSOR_ID = os.getenv("DS18B20_SENSOR_ID") or None
 BH1750_I2C_BUS = int(os.getenv("BH1750_I2C_BUS", "1"))
 BH1750_ADDRESS = int(os.getenv("BH1750_ADDRESS", "0x23"), 0)
 FLOAT_SWITCH_GPIO = int(os.getenv("FLOAT_SWITCH_GPIO", "17"))
+FLOAT_MONITOR_INTERVAL_SECONDS = float(
+    os.getenv("FLOAT_MONITOR_INTERVAL_SECONDS", "1")
+)
+FLOAT_LOW_WATER_CONFIRMATIONS = int(
+    os.getenv("FLOAT_LOW_WATER_CONFIRMATIONS", "3")
+)
+FLOAT_WATER_OK_CONFIRMATIONS = int(
+    os.getenv("FLOAT_WATER_OK_CONFIRMATIONS", "10")
+)
 LIGHT_DARK_LUX = float(os.getenv("LIGHT_DARK_LUX", "100"))
 LIGHT_BRIGHT_LUX = float(os.getenv("LIGHT_BRIGHT_LUX", "1000"))
 LIGHT_EVALUATION_START_HOUR = int(os.getenv("LIGHT_EVALUATION_START_HOUR", "9"))
@@ -95,7 +105,7 @@ def read_with_retries(label, reader, attempts=3, interval_seconds=0.25):
     return None
 
 
-def build_payload():
+def build_payload(float_triggered=None):
     solution_temperature = read_with_retries(
         "DS18B20",
         lambda: read_temperature(sensor_id=DS18B20_SENSOR_ID),
@@ -107,10 +117,11 @@ def build_payload():
             address=BH1750_ADDRESS,
         ),
     )
-    float_triggered = read_optional(
-        "float switch",
-        lambda: read_triggered(gpio=FLOAT_SWITCH_GPIO),
-    )
+    if float_triggered is None:
+        float_triggered = read_optional(
+            "float switch",
+            lambda: read_triggered(gpio=FLOAT_SWITCH_GPIO),
+        )
     current_light_status = light_status(light_lux)
     observed_at = datetime.now().astimezone()
     vitality_score, message = calculate_remote_status(
@@ -178,8 +189,8 @@ def seconds_until_next_send():
     return 0 if remainder < 0.001 else SENSOR_INTERVAL_SECONDS - remainder
 
 
-def process_sensor_cycle():
-    payload = build_payload()
+def process_sensor_cycle(float_triggered=None):
+    payload = build_payload(float_triggered=float_triggered)
 
     try:
         send_to_supabase(payload)
@@ -187,22 +198,90 @@ def process_sensor_cycle():
         print(f"sensor send error: {type(exc).__name__}: {exc}", flush=True)
 
     try:
-        process_notifications(payload)
+        process_notifications(payload, recovery_confirmations=1)
     except Exception as exc:
         print(f"[slack] failed: {type(exc).__name__}: {exc}", flush=True)
+
+    return payload
+
+
+def notification_payload(float_state, latest_payload=None):
+    latest_payload = latest_payload or {}
+    return {
+        "device_id": DEVICE_ID,
+        "location_id": LOCATION_ID,
+        "float_switch_state": float_state,
+        "float_switch_triggered": float_state == "low_water",
+        "vitality_score": latest_payload.get("vitality_score"),
+        "solution_temperature": latest_payload.get("solution_temperature"),
+        "light_lux": latest_payload.get("light_lux"),
+    }
+
+
+def process_float_transition(float_state, latest_payload=None):
+    payload = notification_payload(float_state, latest_payload)
+    try:
+        process_notifications(payload, recovery_confirmations=1)
+    except Exception as exc:
+        print(f"[slack] failed: {type(exc).__name__}: {exc}", flush=True)
+
+    if float_state == "water_ok":
+        send_recovery_care_log(payload, datetime.now().astimezone().isoformat())
+
+
+def initial_float_state():
+    try:
+        state = load_notification_state()
+    except Exception as exc:
+        print(
+            f"[slack] failed: state load during monitor startup: "
+            f"{type(exc).__name__}: {exc}",
+            flush=True,
+        )
+        return None
+    return "low_water" if state["low_water"].get("active") else None
 
 
 def main():
     signal.signal(signal.SIGUSR1, request_manual_send)
+    float_monitor = FloatSwitchStateMonitor(
+        low_water_confirmations=FLOAT_LOW_WATER_CONFIRMATIONS,
+        water_ok_confirmations=FLOAT_WATER_OK_CONFIRMATIONS,
+        initial_state=initial_float_state(),
+    )
+    latest_payload = None
+    next_sensor_send_at = 0.0
 
     while True:
         try:
-            process_sensor_cycle()
+            float_triggered = read_optional(
+                "float switch",
+                lambda: read_triggered(
+                    gpio=FLOAT_SWITCH_GPIO,
+                    samples=1,
+                    interval_seconds=0,
+                ),
+            )
+            transition = float_monitor.observe(float_triggered)
+            if transition:
+                process_float_transition(transition, latest_payload)
+
+            now = time.time()
+            if manual_send_requested.is_set() or now >= next_sensor_send_at:
+                manual_send_requested.clear()
+                confirmed_triggered = (
+                    float_monitor.confirmed_state == "low_water"
+                    if float_monitor.confirmed_state is not None
+                    else float_triggered
+                )
+                latest_payload = process_sensor_cycle(
+                    float_triggered=confirmed_triggered
+                )
+                next_sensor_send_at = now + seconds_until_next_send()
         except Exception as exc:
             print(f"sensor error: {type(exc).__name__}: {exc}", flush=True)
 
-        manual_send_requested.clear()
-        manual_send_requested.wait(seconds_until_next_send())
+        manual_send_requested.wait(max(0.1, FLOAT_MONITOR_INTERVAL_SECONDS))
 
 
 if __name__ == "__main__":
