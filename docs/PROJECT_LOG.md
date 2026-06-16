@@ -676,3 +676,18 @@
 - `sudo systemctl is-active plant-slack-observation.service` が `active` になった。
 - `sudo systemctl status plant-slack-observation.service --no-pager -l` で `Uvicorn running on http://0.0.0.0:8010` を確認した。
 - `sudo curl -i http://127.0.0.1:8010/slack/events` が `405 Method Not Allowed` を返した。
+
+### Slack写真観察ログ Phase 1 の実機E2E確認
+
+#### 確認したこと
+
+- `plant-slack-observation.service` が systemd 管理下で `active` のまま動作していることを確認した。
+- Cloudflare Quick Tunnel 経由で Slack の写真投稿イベントが `slack_observation_bot` に届くことを確認した。
+- `POST /slack/events 200 OK` を `journalctl` で確認した。
+- Slack 写真投稿に対して記録完了返信が返ることを確認した。
+- Supabase `care_logs` に `action_type=checked` の新規観察記録が作成されることを確認した。
+
+#### 判断
+
+- Slack写真観察ログ Phase 1 は、実装・systemd常駐化・実機E2E疎通確認まで完了した。
+- Cloudflare Quick Tunnel は起動ごとに URL が変わるため、恒久運用では Cloudflare named tunnel への移行を検討する。
