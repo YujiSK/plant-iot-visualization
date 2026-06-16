@@ -253,3 +253,45 @@ Future phases may add AI observation support for extracting visible facts such
 as germination, cotyledons, true leaves, yellowing, wilting, medium wetness, and
 whether the reservoir is visible. Retake guidance and observation quality scores
 are intentionally out of scope for the first phase.
+
+## Slack写真観察Botの常駐化
+
+`slack_observation_bot.py` は、2号機上で systemd サービスとして常駐化している。
+
+サービス名:
+
+```bash
+plant-slack-observation.service
+```
+
+状態確認:
+
+```bash
+systemctl status plant-slack-observation.service --no-pager
+```
+
+ログ確認:
+
+```bash
+journalctl -u plant-slack-observation.service -n 80 --no-pager
+```
+
+ローカル疎通確認:
+
+```bash
+curl -i http://127.0.0.1:8010/slack/events
+```
+
+`405 Method Not Allowed` が返れば、FastAPI アプリは起動している。
+
+外部公開は現時点では Cloudflare Quick Tunnel を手動起動する。
+
+```bash
+/tmp/cloudflared tunnel --url http://localhost:8010
+```
+
+表示された `https://xxxxx.trycloudflare.com/slack/events` を Slack App の
+Request URL に設定する。
+
+Quick Tunnel は起動ごとに URL が変わるため、恒久運用時は Cloudflare
+named tunnel への移行を検討する。

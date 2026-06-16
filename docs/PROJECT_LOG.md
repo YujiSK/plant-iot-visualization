@@ -654,3 +654,25 @@
 - 2号機のvitality平均も6/15の85.28から6/16の94.36へ上昇し、設置直後の揺れは収束方向にあると読める。
 - 6/16の平均照度は6/15より高く、透明な容器へ移した影響で周囲光の入り方が変化した可能性があるため、今後は同一条件で比較する。
 - 1号機`raspi`は引き続き動作確認用ノードで、`water_status=dry`とvitality 25の固定挙動を示した。
+
+## 2026-06-17
+
+### Slack写真観察Botの常駐化
+
+#### 変更したこと
+
+- `slack_observation_bot` を `systemd` サービス `plant-slack-observation.service` として常駐化する方針を整理した。
+- 先に Bot 本体だけを常駐化し、Cloudflare Quick Tunnel は引き続き手動運用にする方針を明確にした。
+- `plant-slack-observation.service` をリポジトリに追加した。
+
+#### 注意点
+
+- Quick Tunnel の URL は起動ごとに変わるため、`cloudflared` の常駐化は今回の対象外。
+- 外部公開 URL の固定化は、必要に応じて Cloudflare named tunnel へ移行する段階で行う。
+- `plant-sensor-raspberrypi2.service` など既存のセンサー送信サービスは変更していない。
+
+#### 検証
+
+- `sudo systemctl is-active plant-slack-observation.service` が `active` になった。
+- `sudo systemctl status plant-slack-observation.service --no-pager -l` で `Uvicorn running on http://0.0.0.0:8010` を確認した。
+- `sudo curl -i http://127.0.0.1:8010/slack/events` が `405 Method Not Allowed` を返した。

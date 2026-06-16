@@ -1,0 +1,16 @@
+[Unit]
+Description=Plant IoT Slack Observation Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/plant-iot
+EnvironmentFile=/home/pi/plant-iot/.env
+ExecStart=/home/pi/plant-iot/.venv/bin/uvicorn slack_observation_bot:app --host 0.0.0.0 --port 8010
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
