@@ -291,7 +291,7 @@ def analyze_with_openai(
         )
         response.raise_for_status()
     observation = parse_openai_observation_response(response.json())
-    LOGGER.info("OpenAI vision parsed JSON keys=%s", sorted(observation.keys()))
+    LOGGER.warning("OpenAI vision parsed JSON keys=%s", sorted(observation.keys()))
     return observation
 
 
@@ -313,7 +313,11 @@ def analyze_with_gemini(
     if image_bytes is None:
         return fallback_observation(nearest_sensor_log)
 
-    LOGGER.info("Gemini vision image_bytes=%s mime_type=%s", len(image_bytes), image_mimetype or "image/jpeg")
+    LOGGER.warning(
+        "Gemini vision image_bytes=%s mime_type=%s",
+        len(image_bytes),
+        image_mimetype or "image/jpeg",
+    )
     payload = build_gemini_observation_payload(
         image_bytes=image_bytes,
         image_mimetype=image_mimetype,
@@ -339,8 +343,9 @@ def analyze_with_gemini(
             _truncate_text(getattr(response, "text", "")),
         )
         response.raise_for_status()
-    observation = parse_gemini_observation_response(response.json())
-    LOGGER.info("Gemini vision parsed JSON keys=%s", sorted(observation.keys()))
+    response_body = response.json()
+    observation = parse_gemini_observation_response(response_body)
+    LOGGER.warning("Gemini vision parsed JSON keys=%s", sorted(observation.keys()))
     return observation
 
 
@@ -490,6 +495,17 @@ def parse_gemini_observation_response(response_body: dict[str, Any]) -> dict[str
             parsed = json.loads(text)
             if isinstance(parsed, dict):
                 return parsed
+    for step in response_body.get("steps", []) or []:
+        for content in step.get("content", []) or []:
+            text = content.get("text")
+            if isinstance(text, str) and text.strip():
+                parsed = json.loads(text)
+                if isinstance(parsed, dict):
+                    return parsed
+    LOGGER.error(
+        "Gemini response did not contain parseable observation JSON: body=%s",
+        _truncate_text(json.dumps(response_body, ensure_ascii=False, sort_keys=True)),
+    )
     raise ValueError("Gemini response did not contain observation JSON")
 
 

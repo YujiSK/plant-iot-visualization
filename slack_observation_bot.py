@@ -320,13 +320,13 @@ def fetch_slack_image_bytes(
     url = slack_file.get("url_private_download") or slack_file.get("url_private")
     if not url:
         return None, None
-    LOGGER.info("Slack image download start: file_id=%s", slack_file.get("id"))
+    LOGGER.warning("Slack image download start: file_id=%s", slack_file.get("id"))
     response = http_client.get(
         url,
         headers={"Authorization": f"Bearer {config.slack_bot_token}"},
         timeout=20,
     )
-    LOGGER.info(
+    LOGGER.warning(
         "Slack image download result: status=%s bytes=%s mime_type=%s",
         getattr(response, "status_code", "unknown"),
         len(getattr(response, "content", b"") or b""),
@@ -612,7 +612,7 @@ def process_slack_event(
         return {"status": "ignored"}
 
     if observation_already_recorded(observation, config, http_client=http_client):
-        LOGGER.info(
+        LOGGER.warning(
             "duplicate Slack observation skipped: slack_ts=%s file_id=%s",
             observation.get("ts"),
             observation["file"].get("id"),
@@ -635,7 +635,7 @@ def process_slack_event(
             observation["file"], config, http_client=http_client
         )
         image_url = slack_file_url(observation["file"])
-        LOGGER.info(
+        LOGGER.warning(
             "AI observation start: provider=%s model=%s image_bytes=%s",
             config.ai_vision_provider,
             config.selected_ai_model,
@@ -656,7 +656,7 @@ def process_slack_event(
             gemini_model=config.gemini_vision_model,
             http_client=http_client,
         )
-        LOGGER.info(
+        LOGGER.warning(
             "AI observation success: growth_stage=%s true_leaf_detected=%s true_leaf_pair_count=%s confidence=%s",
             ai_observation.get("growth_stage"),
             ai_observation.get("true_leaf_detected"),
@@ -712,7 +712,7 @@ def process_slack_event(
             nearest_sensor_log,
             ai_observation,
         )
-        LOGGER.info(
+        LOGGER.warning(
             "plant_observations insert start: growth_stage=%s true_leaf_detected=%s true_leaf_pair_count=%s model=%s",
             plant_payload.get("growth_stage"),
             plant_payload.get("true_leaf_detected"),

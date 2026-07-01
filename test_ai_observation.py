@@ -189,7 +189,23 @@ class AiObservationTest(unittest.TestCase):
         self.assertEqual(payload["response_format"]["mime_type"], "application/json")
 
     def test_gemini_provider_success(self):
-        http = FakeHttp(FakeResponse(payload={"output_text": __import__("json").dumps(OBSERVATION_JSON)}))
+        http = FakeHttp(
+            FakeResponse(
+                payload={
+                    "steps": [
+                        {
+                            "type": "model_output",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": __import__("json").dumps(OBSERVATION_JSON),
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
 
         result = analyze_observation(
             image_bytes=b"fake-image",
