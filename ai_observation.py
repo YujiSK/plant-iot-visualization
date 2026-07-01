@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import mimetypes
 import os
 from datetime import datetime
@@ -18,7 +19,11 @@ import requests
 
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
 DEFAULT_OPENAI_MODEL = "gpt-4.1"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+DEFAULT_AI_VISION_PROVIDER = "openai"
+LOGGER = logging.getLogger("ai_observation")
 
 GROWTH_STAGE_VALUES = [
     "seed",
@@ -173,30 +178,101 @@ def analyze_observation(
     device_id: str = "",
     location_id: str = "",
     observed_at: datetime | None = None,
+    ai_vision_provider: str | None = None,
     openai_api_key: str | None = None,
+    openai_model: str | None = None,
+    gemini_api_key: str | None = None,
+    gemini_model: str | None = None,
     model: str | None = None,
     http_client=requests,
 ) -> dict[str, Any]:
     """Return structured observation support for a plant photo."""
 
-    api_key = openai_api_key if openai_api_key is not None else os.getenv("OPENAI_API_KEY", "")
+    provider = (
+        ai_vision_provider
+        if ai_vision_provider is not None
+        else os.getenv("AI_VISION_PROVIDER", DEFAULT_AI_VISION_PROVIDER)
+    ).strip().lower()
+    if provider not in {"openai", "gemini"}:
+        raise ValueError(f"Unsupported AI_VISION_PROVIDER: {provider}")
+
+    resolved_image_url = image_url
+    if image_bytes is not None and provider == "openai":
+        resolved_image_url = data_url_from_image_bytes(image_bytes, image_mimetype)
+    if image_bytes is None and not resolved_image_url:
+        return fallback_observation(nearest_sensor_log)
+
+    if provider == "openai":
+        api_key = (
+            openai_api_key
+            if openai_api_key is not None
+            else os.getenv("OPENAI_API_KEY", "")
+        )
+        if not api_key:
+            return fallback_observation(nearest_sensor_log)
+        resolved_model = (
+            model
+            or openai_model
+            or os.getenv("OPENAI_VISION_MODEL")
+            or DEFAULT_OPENAI_MODEL
+        )
+        LOGGER.info("AI vision provider=openai model=%s", resolved_model)
+        observation = analyze_with_openai(
+            image_url=resolved_image_url,
+            nearest_sensor_log=nearest_sensor_log,
+            device_id=device_id,
+            location_id=location_id,
+            observed_at=observed_at,
+            api_key=api_key,
+            model=resolved_model,
+            http_client=http_client,
+        )
+        return validate_observation(observation)
+
+    api_key = (
+        gemini_api_key
+        if gemini_api_key is not None
+        else os.getenv("GEMINI_API_KEY", "")
+    )
     if not api_key:
         return fallback_observation(nearest_sensor_log)
-
-    resolved_model = model or os.getenv("OPENAI_VISION_MODEL") or DEFAULT_OPENAI_MODEL
-    resolved_image_url = image_url
-    if image_bytes is not None:
-        resolved_image_url = data_url_from_image_bytes(image_bytes, image_mimetype)
-    if not resolved_image_url:
-        return fallback_observation(nearest_sensor_log)
-
-    payload = build_openai_observation_payload(
+    resolved_model = gemini_model or os.getenv("GEMINI_VISION_MODEL") or DEFAULT_GEMINI_MODEL
+    LOGGER.info("AI vision provider=gemini model=%s", resolved_model)
+    observation = analyze_with_gemini(
         image_url=resolved_image_url,
+        image_bytes=image_bytes,
+        image_mimetype=image_mimetype,
         nearest_sensor_log=nearest_sensor_log,
         device_id=device_id,
         location_id=location_id,
         observed_at=observed_at,
+        api_key=api_key,
         model=resolved_model,
+        http_client=http_client,
+    )
+    return validate_observation(observation)
+
+
+def analyze_with_openai(
+    *,
+    image_url: str | None,
+    nearest_sensor_log: dict[str, Any] | None,
+    device_id: str,
+    location_id: str,
+    observed_at: datetime | None,
+    api_key: str,
+    model: str,
+    http_client=requests,
+) -> dict[str, Any]:
+    if not image_url:
+        return fallback_observation(nearest_sensor_log)
+    payload = build_openai_observation_payload(
+        image_url=image_url,
+        nearest_sensor_log=nearest_sensor_log,
+        device_id=device_id,
+        location_id=location_id,
+        observed_at=observed_at,
+        model=model,
     )
     response = http_client.post(
         OPENAI_RESPONSES_URL,
@@ -207,15 +283,79 @@ def analyze_observation(
         json=payload,
         timeout=30,
     )
-    response.raise_for_status()
+    if not response.ok:
+        LOGGER.error(
+            "OpenAI vision failed: status=%s body=%s",
+            response.status_code,
+            _truncate_text(getattr(response, "text", "")),
+        )
+        response.raise_for_status()
     observation = parse_openai_observation_response(response.json())
-    return normalize_observation(observation)
+    LOGGER.info("OpenAI vision parsed JSON keys=%s", sorted(observation.keys()))
+    return observation
+
+
+def analyze_with_gemini(
+    *,
+    image_url: str | None,
+    image_bytes: bytes | None,
+    image_mimetype: str | None,
+    nearest_sensor_log: dict[str, Any] | None,
+    device_id: str,
+    location_id: str,
+    observed_at: datetime | None,
+    api_key: str,
+    model: str,
+    http_client=requests,
+) -> dict[str, Any]:
+    if image_bytes is None and image_url and image_url.startswith("data:"):
+        image_mimetype, image_bytes = image_bytes_from_data_url(image_url)
+    if image_bytes is None:
+        return fallback_observation(nearest_sensor_log)
+
+    LOGGER.info("Gemini vision image_bytes=%s mime_type=%s", len(image_bytes), image_mimetype or "image/jpeg")
+    payload = build_gemini_observation_payload(
+        image_bytes=image_bytes,
+        image_mimetype=image_mimetype,
+        nearest_sensor_log=nearest_sensor_log,
+        device_id=device_id,
+        location_id=location_id,
+        observed_at=observed_at,
+        model=model,
+    )
+    response = http_client.post(
+        GEMINI_INTERACTIONS_URL,
+        headers={
+            "x-goog-api-key": api_key,
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=30,
+    )
+    if not response.ok:
+        LOGGER.error(
+            "Gemini vision failed: status=%s body=%s",
+            response.status_code,
+            _truncate_text(getattr(response, "text", "")),
+        )
+        response.raise_for_status()
+    observation = parse_gemini_observation_response(response.json())
+    LOGGER.info("Gemini vision parsed JSON keys=%s", sorted(observation.keys()))
+    return observation
 
 
 def data_url_from_image_bytes(image_bytes: bytes, mimetype: str | None = None) -> str:
     media_type = mimetype or "image/jpeg"
     encoded = base64.b64encode(image_bytes).decode("ascii")
     return f"data:{media_type};base64,{encoded}"
+
+
+def image_bytes_from_data_url(data_url: str) -> tuple[str | None, bytes]:
+    header, encoded = data_url.split(",", 1)
+    mimetype = None
+    if header.startswith("data:") and ";base64" in header:
+        mimetype = header[len("data:") : header.index(";base64")]
+    return mimetype, base64.b64decode(encoded)
 
 
 def build_openai_observation_payload(
@@ -255,6 +395,40 @@ def build_openai_observation_payload(
                 "strict": True,
                 "schema": AI_OBSERVATION_JSON_SCHEMA,
             }
+        },
+    }
+
+
+def build_gemini_observation_payload(
+    *,
+    image_bytes: bytes,
+    image_mimetype: str | None,
+    nearest_sensor_log: dict[str, Any] | None,
+    device_id: str,
+    location_id: str,
+    observed_at: datetime | None,
+    model: str,
+) -> dict[str, Any]:
+    prompt = build_vision_prompt(
+        nearest_sensor_log=nearest_sensor_log,
+        device_id=device_id,
+        location_id=location_id,
+        observed_at=observed_at,
+    )
+    return {
+        "model": model,
+        "input": [
+            {"type": "text", "text": prompt},
+            {
+                "type": "image",
+                "data": base64.b64encode(image_bytes).decode("ascii"),
+                "mime_type": image_mimetype or "image/jpeg",
+            },
+        ],
+        "response_format": {
+            "type": "text",
+            "mime_type": "application/json",
+            "schema": AI_OBSERVATION_JSON_SCHEMA,
         },
     }
 
@@ -301,6 +475,30 @@ def parse_openai_observation_response(response_body: dict[str, Any]) -> dict[str
                 if isinstance(parsed, dict):
                     return parsed
     raise ValueError("OpenAI response did not contain observation JSON")
+
+
+def parse_gemini_observation_response(response_body: dict[str, Any]) -> dict[str, Any]:
+    output_text = response_body.get("output_text")
+    if isinstance(output_text, str) and output_text.strip():
+        parsed = json.loads(output_text)
+        if isinstance(parsed, dict):
+            return parsed
+
+    for output_item in response_body.get("output", []) or []:
+        text = output_item.get("text")
+        if isinstance(text, str) and text.strip():
+            parsed = json.loads(text)
+            if isinstance(parsed, dict):
+                return parsed
+    raise ValueError("Gemini response did not contain observation JSON")
+
+
+def validate_observation(observation: dict[str, Any]) -> dict[str, Any]:
+    normalized = normalize_observation(observation)
+    missing = [key for key in AI_OBSERVATION_JSON_SCHEMA["required"] if key not in normalized]
+    if missing:
+        raise ValueError("AI observation missing required keys: " + ", ".join(missing))
+    return normalized
 
 
 def normalize_observation(observation: dict[str, Any]) -> dict[str, Any]:
@@ -504,6 +702,11 @@ def guess_mimetype_from_url(url: str | None) -> str | None:
         return None
     mimetype, _ = mimetypes.guess_type(url)
     return mimetype
+
+
+def _truncate_text(value: Any, limit: int = 1000) -> str:
+    text = str(value or "")
+    return text if len(text) <= limit else text[:limit] + "...<truncated>"
 
 
 def _as_int(value: Any) -> int | None:

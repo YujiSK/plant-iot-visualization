@@ -168,6 +168,25 @@ class SlackObservationBotTest(unittest.TestCase):
         self.assertIn("生育段階: 子葉期", slack_posts[0]["text"])
         self.assertIn("前回との比較", slack_posts[0]["text"])
 
+    def test_duplicate_slack_event_is_skipped_before_ai_work(self):
+        http = FakeHttp(
+            care_rows=[
+                {
+                    "id": "care-1",
+                    "note": "slack_ts=1781622600.000000",
+                }
+            ]
+        )
+
+        result = process_slack_event(image_event(), config(), http_client=http)
+
+        self.assertEqual(result["status"], "duplicate")
+        self.assertEqual(
+            [url for url, _ in http.gets if "files.slack.com" in url],
+            [],
+        )
+        self.assertEqual(http.posts, [])
+
     def test_text_only_event_is_ignored(self):
         event = image_event(files=[])
 

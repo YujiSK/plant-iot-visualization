@@ -18,7 +18,9 @@ from dotenv import load_dotenv
 from ai_observation import (
     analyze_observation,
     compare_observations,
-    data_url_from_image_bytes,
+    DEFAULT_AI_VISION_PROVIDER,
+    DEFAULT_GEMINI_MODEL,
+    DEFAULT_OPENAI_MODEL,
     extract_ai_observation_from_note,
     extract_observed_at_from_note,
     format_comparison_for_slack,
@@ -54,8 +56,11 @@ class ObservationConfig:
     observation_channel_id: str
     device_id: str = "raspberrypi2"
     location_id: str = "location-b"
+    ai_vision_provider: str = DEFAULT_AI_VISION_PROVIDER
     openai_api_key: str = ""
-    openai_vision_model: str = "gpt-4.1"
+    openai_vision_model: str = DEFAULT_OPENAI_MODEL
+    gemini_api_key: str = ""
+    gemini_vision_model: str = DEFAULT_GEMINI_MODEL
 
     @classmethod
     def from_env(cls) -> "ObservationConfig":
@@ -76,8 +81,13 @@ class ObservationConfig:
             "observation_channel_id": os.getenv("SLACK_OBSERVATION_CHANNEL_ID", ""),
             "device_id": os.getenv("DEVICE_ID", "raspberrypi2"),
             "location_id": os.getenv("LOCATION_ID", "location-b"),
+            "ai_vision_provider": os.getenv(
+                "AI_VISION_PROVIDER", DEFAULT_AI_VISION_PROVIDER
+            ),
             "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
-            "openai_vision_model": os.getenv("OPENAI_VISION_MODEL", "gpt-4.1"),
+            "openai_vision_model": os.getenv("OPENAI_VISION_MODEL", DEFAULT_OPENAI_MODEL),
+            "gemini_api_key": os.getenv("GEMINI_API_KEY", ""),
+            "gemini_vision_model": os.getenv("GEMINI_VISION_MODEL", DEFAULT_GEMINI_MODEL),
         }
         required_keys = [
             "supabase_url",
@@ -94,6 +104,12 @@ class ObservationConfig:
                 "Slack observation bot disabled: missing " + ", ".join(missing)
             )
         return cls(**values)
+
+    @property
+    def selected_ai_model(self) -> str:
+        if self.ai_vision_provider.strip().lower() == "gemini":
+            return self.gemini_vision_model
+        return self.openai_vision_model
 
 
 def slack_ts_to_jst(slack_ts: str) -> datetime:
@@ -304,10 +320,19 @@ def fetch_slack_image_bytes(
     url = slack_file.get("url_private_download") or slack_file.get("url_private")
     if not url:
         return None, None
+    LOGGER.info("Slack image download start: file_id=%s", slack_file.get("id"))
     response = http_client.get(
         url,
         headers={"Authorization": f"Bearer {config.slack_bot_token}"},
         timeout=20,
+    )
+    LOGGER.info(
+        "Slack image download result: status=%s bytes=%s mime_type=%s",
+        getattr(response, "status_code", "unknown"),
+        len(getattr(response, "content", b"") or b""),
+        getattr(response, "headers", {}).get("Content-Type")
+        if getattr(response, "headers", None)
+        else slack_file.get("mimetype"),
     )
     response.raise_for_status()
     content_type = None
@@ -458,7 +483,7 @@ def build_plant_observation_payload(
         "summary": ai_observation.get("summary"),
         "next_action": ai_observation.get("next_action"),
         "raw_ai_json": ai_observation,
-        "model": config.openai_vision_model,
+        "model": config.selected_ai_model,
     }
     return {key: value for key, value in payload.items() if value is not None}
 
@@ -486,6 +511,30 @@ def insert_plant_observation(
             "plant_observations insert failed: %s: %s", type(exc).__name__, exc
         )
         return False
+
+
+def observation_already_recorded(
+    observation: dict[str, Any],
+    config: ObservationConfig,
+    http_client=requests,
+) -> bool:
+    slack_ts = observation.get("ts")
+    if not slack_ts:
+        return False
+    query = (
+        "select=id"
+        f"&action_type=eq.checked"
+        f"&note=ilike.{quote(f'*slack_ts={slack_ts}*', safe='*=.')}"
+        "&limit=1"
+    )
+    response = http_client.get(
+        f"{config.supabase_url}/rest/v1/care_logs?{query}",
+        headers=supabase_headers(config),
+        timeout=10,
+    )
+    response.raise_for_status()
+    rows = response.json()
+    return isinstance(rows, list) and bool(rows)
 
 
 def format_value(value: Any, suffix: str = "") -> str:
@@ -562,6 +611,14 @@ def process_slack_event(
     if observation is None:
         return {"status": "ignored"}
 
+    if observation_already_recorded(observation, config, http_client=http_client):
+        LOGGER.info(
+            "duplicate Slack observation skipped: slack_ts=%s file_id=%s",
+            observation.get("ts"),
+            observation["file"].get("id"),
+        )
+        return {"status": "duplicate", "care_log_created": False}
+
     observed_at = slack_ts_to_jst(observation["ts"])
     nearest_sensor_log = None
     try:
@@ -578,17 +635,33 @@ def process_slack_event(
             observation["file"], config, http_client=http_client
         )
         image_url = slack_file_url(observation["file"])
-        if image_bytes is not None:
-            image_url = data_url_from_image_bytes(image_bytes, image_mimetype)
+        LOGGER.info(
+            "AI observation start: provider=%s model=%s image_bytes=%s",
+            config.ai_vision_provider,
+            config.selected_ai_model,
+            len(image_bytes or b""),
+        )
         ai_observation = analyze_observation(
             image_url=image_url,
+            image_bytes=image_bytes,
+            image_mimetype=image_mimetype,
             nearest_sensor_log=nearest_sensor_log,
             device_id=config.device_id,
             location_id=config.location_id,
             observed_at=observed_at,
+            ai_vision_provider=config.ai_vision_provider,
             openai_api_key=config.openai_api_key,
-            model=config.openai_vision_model,
+            openai_model=config.openai_vision_model,
+            gemini_api_key=config.gemini_api_key,
+            gemini_model=config.gemini_vision_model,
             http_client=http_client,
+        )
+        LOGGER.info(
+            "AI observation success: growth_stage=%s true_leaf_detected=%s true_leaf_pair_count=%s confidence=%s",
+            ai_observation.get("growth_stage"),
+            ai_observation.get("true_leaf_detected"),
+            ai_observation.get("true_leaf_pair_count"),
+            ai_observation.get("confidence"),
         )
     except Exception as exc:
         ai_observation_error = f"{type(exc).__name__}: {exc}"
@@ -638,6 +711,13 @@ def process_slack_event(
             config,
             nearest_sensor_log,
             ai_observation,
+        )
+        LOGGER.info(
+            "plant_observations insert start: growth_stage=%s true_leaf_detected=%s true_leaf_pair_count=%s model=%s",
+            plant_payload.get("growth_stage"),
+            plant_payload.get("true_leaf_detected"),
+            plant_payload.get("true_leaf_pair_count"),
+            plant_payload.get("model"),
         )
         plant_observation_created = insert_plant_observation(
             plant_payload, config, http_client=http_client

@@ -104,16 +104,20 @@ machine running `slack_observation_bot.py`:
 SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-slack-signing-secret
 SLACK_OBSERVATION_CHANNEL_ID=C0123456789
+AI_VISION_PROVIDER=openai
 OPENAI_API_KEY=sk-your-openai-api-key
 OPENAI_VISION_MODEL=gpt-4.1
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_VISION_MODEL=gemini-3.5-flash
 ```
 
 The observation bot also reads `SUPABASE_URL`, `SUPABASE_KEY`, `DEVICE_ID`, and
 `LOCATION_ID`. For the current deployment, run it with `DEVICE_ID=raspberrypi2`
-and `LOCATION_ID=location-b`. `OPENAI_API_KEY` enables GPT Vision analysis via
-the Responses API. `OPENAI_VISION_MODEL` defaults to `gpt-4.1` when omitted.
-Keep all Slack tokens, OpenAI keys, and Supabase keys in `.env`; do not commit
-them.
+and `LOCATION_ID=location-b`. `AI_VISION_PROVIDER` selects the backend:
+`openai` uses the OpenAI Responses API and `gemini` uses the Gemini API.
+`OPENAI_VISION_MODEL` defaults to `gpt-4.1`, and `GEMINI_VISION_MODEL` defaults
+to `gemini-3.5-flash`. Keep all Slack tokens, AI provider keys, and Supabase
+keys in `.env`; do not commit them.
 
 Slack App settings for photo observation:
 
@@ -257,9 +261,10 @@ This feature is an observation-recording feature, not AI diagnosis. Its purpose
 is to keep plant photos in the project timeline and make later comparison with
 sensor values, `daily_sensor_analysis`, and `care_logs` easier.
 
-`ai_observation.py` adds GPT Vision observation support through the OpenAI
-Responses API. It sends the Slack image as an `input_image` and requests strict
-JSON Schema output. The structured `ai_observation_json` includes
+`ai_observation.py` adds provider-based vision observation support. The OpenAI
+provider uses the Responses API, while the Gemini provider uses the Gemini API
+with inline image data and JSON Schema response format. The structured
+`ai_observation_json` includes
 `growth_stage`, `true_leaf_detected`, `true_leaf_pair_count`,
 `cotyledon_visible`, `plant_count_estimate`, `crowding`, `leaf_color`,
 `leaf_size`, `wilting`, `yellowing`, `root_visibility`,
@@ -276,9 +281,9 @@ adds a `前回との比較` block to the Slack reply. The comparison JSON is sto
 `device_id=...` and `location_id=...` so future comparisons can prefer the same
 device and location.
 
-The observation module is intentionally not a disease diagnosis system. If
-`OPENAI_API_KEY` is not set, it returns conservative fallback values so Slack
-photo logging still works, but normalized AI quality is lower.
+The observation module is intentionally not a disease diagnosis system. If the
+selected provider key is not set, it returns conservative fallback values so
+Slack photo logging still works, but normalized AI quality is lower.
 
 Apply the normalized observation table before relying on `plant_observations`:
 

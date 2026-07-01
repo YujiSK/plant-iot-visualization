@@ -1,8 +1,10 @@
 import unittest
 
 from ai_observation import (
+    GEMINI_INTERACTIONS_URL,
     OPENAI_RESPONSES_URL,
     analyze_observation,
+    build_gemini_observation_payload,
     build_openai_observation_payload,
     compare_observations,
     extract_ai_observation_from_note,
@@ -10,6 +12,50 @@ from ai_observation import (
     format_observation_for_slack,
     parse_openai_observation_response,
 )
+
+
+OBSERVATION_JSON = {
+    "growth_stage": "true_leaf_1",
+    "true_leaf_detected": True,
+    "true_leaf_pair_count": 1,
+    "cotyledon_visible": True,
+    "plant_count_estimate": 18,
+    "crowding": "medium",
+    "leaf_color": "green",
+    "leaf_size": "small",
+    "wilting": False,
+    "yellowing": False,
+    "root_visibility": False,
+    "root_length_estimate": None,
+    "confidence": 0.8,
+    "summary": "本葉が見えます",
+    "next_action": "本葉対数を確認",
+}
+
+
+class FakeResponse:
+    def __init__(self, status_code=200, payload=None, text="OK"):
+        self.status_code = status_code
+        self._payload = payload
+        self.text = text
+        self.ok = 200 <= status_code < 300
+
+    def json(self):
+        return self._payload
+
+    def raise_for_status(self):
+        if not self.ok:
+            raise RuntimeError(f"HTTP {self.status_code}")
+
+
+class FakeHttp:
+    def __init__(self, response):
+        self.response = response
+        self.posts = []
+
+    def post(self, url, **kwargs):
+        self.posts.append((url, kwargs))
+        return self.response
 
 
 class AiObservationTest(unittest.TestCase):
@@ -22,6 +68,8 @@ class AiObservationTest(unittest.TestCase):
             },
             device_id="raspberrypi2",
             location_id="location-b",
+            openai_api_key="",
+            gemini_api_key="",
         )
 
         self.assertEqual(result["growth_stage"], "cotyledon")
@@ -92,21 +140,87 @@ class AiObservationTest(unittest.TestCase):
 
     def test_parse_openai_observation_response_output_text(self):
         parsed = parse_openai_observation_response(
-            {
-                "output_text": (
-                    '{"growth_stage":"true_leaf_1","true_leaf_detected":true,'
-                    '"true_leaf_pair_count":1,"cotyledon_visible":true,'
-                    '"plant_count_estimate":18,"crowding":"medium",'
-                    '"leaf_color":"green","leaf_size":"small","wilting":false,'
-                    '"yellowing":false,"root_visibility":false,'
-                    '"root_length_estimate":null,"confidence":0.8,'
-                    '"summary":"本葉が見えます","next_action":"本葉対数を確認"}'
-                )
-            }
+            {"output_text": __import__("json").dumps(OBSERVATION_JSON)}
         )
 
         self.assertEqual(parsed["growth_stage"], "true_leaf_1")
         self.assertTrue(parsed["true_leaf_detected"])
+
+    def test_openai_provider_success(self):
+        http = FakeHttp(FakeResponse(payload={"output_text": __import__("json").dumps(OBSERVATION_JSON)}))
+
+        result = analyze_observation(
+            image_bytes=b"fake-image",
+            image_mimetype="image/jpeg",
+            ai_vision_provider="openai",
+            openai_api_key="openai-key",
+            openai_model="gpt-4.1",
+            http_client=http,
+        )
+
+        self.assertEqual(http.posts[0][0], OPENAI_RESPONSES_URL)
+        self.assertEqual(result["growth_stage"], "true_leaf_1")
+        self.assertTrue(result["true_leaf_detected"])
+
+    def test_openai_429_failure(self):
+        http = FakeHttp(FakeResponse(status_code=429, payload={}, text="rate limited"))
+
+        with self.assertRaises(RuntimeError):
+            analyze_observation(
+                image_bytes=b"fake-image",
+                ai_vision_provider="openai",
+                openai_api_key="openai-key",
+                http_client=http,
+            )
+
+    def test_gemini_payload_uses_inline_image_and_schema(self):
+        payload = build_gemini_observation_payload(
+            image_bytes=b"fake-image",
+            image_mimetype="image/jpeg",
+            nearest_sensor_log={"float_switch_state": "water_ok"},
+            device_id="raspberrypi2",
+            location_id="location-b",
+            observed_at=None,
+            model="gemini-3.5-flash",
+        )
+
+        self.assertEqual(payload["model"], "gemini-3.5-flash")
+        self.assertEqual(payload["input"][1]["type"], "image")
+        self.assertEqual(payload["response_format"]["mime_type"], "application/json")
+
+    def test_gemini_provider_success(self):
+        http = FakeHttp(FakeResponse(payload={"output_text": __import__("json").dumps(OBSERVATION_JSON)}))
+
+        result = analyze_observation(
+            image_bytes=b"fake-image",
+            image_mimetype="image/jpeg",
+            ai_vision_provider="gemini",
+            gemini_api_key="gemini-key",
+            gemini_model="gemini-3.5-flash",
+            http_client=http,
+        )
+
+        self.assertEqual(http.posts[0][0], GEMINI_INTERACTIONS_URL)
+        self.assertEqual(result["growth_stage"], "true_leaf_1")
+        self.assertEqual(result["true_leaf_pair_count"], 1)
+
+    def test_gemini_api_failure(self):
+        http = FakeHttp(FakeResponse(status_code=500, payload={}, text="gemini error"))
+
+        with self.assertRaises(RuntimeError):
+            analyze_observation(
+                image_bytes=b"fake-image",
+                ai_vision_provider="gemini",
+                gemini_api_key="gemini-key",
+                http_client=http,
+            )
+
+    def test_invalid_provider_setting(self):
+        with self.assertRaises(ValueError):
+            analyze_observation(
+                image_bytes=b"fake-image",
+                ai_vision_provider="unknown",
+            )
 
     def test_extract_ai_observation_from_note(self):
         note = (
