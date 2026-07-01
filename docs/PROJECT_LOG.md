@@ -691,3 +691,58 @@
 
 - Slack写真観察ログ Phase 1 は、実装・systemd常駐化・実機E2E疎通確認まで完了した。
 - Cloudflare Quick Tunnel は起動ごとに URL が変わるため、恒久運用では Cloudflare named tunnel への移行を検討する。
+
+### Cloudflare Quick Tunnel の systemd 常駐化
+
+#### 変更したこと
+
+- Slack写真観察Bot向けの外部公開を Cloudflare Quick Tunnel でも systemd 常駐化する方針にした。
+- `cloudflared-quick-tunnel.service` を追加し、`http://127.0.0.1:8010` を外部公開する設定を用意した。
+- Quick Tunnel の URL は `journalctl` から抽出できるようにした。
+
+#### 注意点
+
+- 既存の `cloudflared.service` は Named Tunnel 用として残す。
+- 2本の `cloudflared` は同時起動可能だが、Slack の Request URL は 1 本に絞る。
+- 使うのは Slack Observation Bot で、`localhost:8010` を公開する。
+
+### AI Observation Service Phase 2 最小実装
+
+#### 実装したこと
+
+- `ai_observation.py` を追加し、写真観察支援JSONを返す独立モジュールを用意した。
+- Phase 2 では外部AI APIへ接続せず、現在のバジル状況と最寄りセンサー値に基づくルールベースの仮判定にした。
+- `slack_observation_bot.py` から AI 観察支援を呼び出し、Slack返信に生育段階、推定株数、黄化、萎れ、密集、水分観察、撮影品質、次の確認を追加した。
+- `care_logs.note` に `ai_observation_json=...` として観察支援JSONを保存するようにした。
+- AI観察支援が失敗した場合も `care_logs` 保存とSlack返信全体は継続し、`ai_observation_error` を `note` に残すようにした。
+
+#### 注意点
+
+- この機能は病気診断ではなく、観察支援と確認候補の提示として扱う。
+- DBスキーマ変更は行わず、将来必要になった段階で `care_logs.ai_observation` などのJSONカラム追加を検討する。
+
+#### 検証
+
+- `python -m py_compile ai_observation.py slack_observation_bot.py test_ai_observation.py test_slack_observation_bot.py` 成功。
+- `python -m unittest test_ai_observation.py test_slack_observation_bot.py` 成功。12件成功。
+
+### AI Observation Phase 3 成長変化比較の最小実装
+
+#### 実装したこと
+
+- `ai_observation.py` に `ai_observation_json` 抽出、観察結果比較、Slack表示用の比較整形を追加した。
+- `slack_observation_bot.py` が直近の `care_logs.note` から前回の `ai_observation_json` を取得し、今回の観察支援JSONと比較するようにした。
+- 新規 `care_logs.note` に `device_id` と `location_id` を保存し、今後は同一 device/location の前回観察を優先して比較できるようにした。
+- Slack返信に `前回との比較` ブロックを追加し、前回観察時刻、生育段階、推定株数、密集度、変化メモを表示するようにした。
+- `care_logs.note` に `observation_comparison_json=...` として比較結果を保存するようにした。
+- 前回記録がない場合、JSONが壊れている場合、比較処理が失敗した場合でも、観察記録保存とSlack返信は継続するようにした。
+
+#### 注意点
+
+- 成長変化比較は病気診断ではなく、観察継続のための差分メモとして扱う。
+- 既存の `care_logs` スキーマは変更せず、Phase 2 と同じく `note` へのテキスト追記で実装した。
+
+#### 検証
+
+- `python -m py_compile slack_observation_bot.py ai_observation.py` 成功。
+- `python -m unittest test_ai_observation.py test_slack_observation_bot.py` 成功。22件成功。

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Send stateful Plant IoT alerts to Slack without stopping sensor collection."""
+"""Send stateful Plant IoT alerts without stopping sensor collection."""
 
 import json
 import os
@@ -10,6 +10,7 @@ from pathlib import Path
 import requests
 
 
+LINE_PUSH_MESSAGE_URL = "https://api.line.me/v2/bot/message/push"
 DEFAULT_STATE_PATH = Path(__file__).with_name("notification_state.json")
 DEFAULT_STATE = {
     "low_water": {
@@ -131,14 +132,49 @@ def send_slack_message(message, webhook_url=None, post=requests.post):
         return False
 
 
+def send_line_message(
+    message,
+    channel_access_token=None,
+    to_id=None,
+    post=requests.post,
+):
+    channel_access_token = (
+        channel_access_token
+        if channel_access_token is not None
+        else os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "")
+    )
+    to_id = to_id if to_id is not None else os.getenv("LINE_TO_ID", "")
+    if not channel_access_token or not to_id:
+        print(
+            "[line] disabled: LINE_CHANNEL_ACCESS_TOKEN or LINE_TO_ID not set",
+            flush=True,
+        )
+        return False
+
+    try:
+        response = post(
+            LINE_PUSH_MESSAGE_URL,
+            headers={"Authorization": f"Bearer {channel_access_token}"},
+            json={"to": to_id, "messages": [{"type": "text", "text": message[:5000]}]},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return True
+    except Exception as exc:
+        print(f"[line] failed: {type(exc).__name__}: {exc}", flush=True)
+        return False
+
+
 def process_notifications(
     payload,
     state_path=None,
     webhook_url=None,
+    line_channel_access_token=None,
+    line_to_id=None,
     post=requests.post,
     recovery_confirmations=2,
 ):
-    """Detect transitions, send Slack messages, and persist notification state."""
+    """Detect transitions, send messages, and persist notification state."""
     try:
         state = load_notification_state(state_path)
     except Exception as exc:
@@ -155,23 +191,31 @@ def process_notifications(
             continue
 
         occurred_at = current_timestamp()
-        sent = send_slack_message(
-            build_slack_message(event, payload, occurred_at),
+        message = build_slack_message(event, payload, occurred_at)
+        slack_sent = send_slack_message(
+            message,
             webhook_url=webhook_url,
             post=post,
         )
+        line_sent = send_line_message(
+            message,
+            channel_access_token=line_channel_access_token,
+            to_id=line_to_id,
+            post=post,
+        )
+        sent = slack_sent or line_sent
         if not sent:
             continue
 
         if event == "low_water":
             low_water["active"] = True
             low_water["last_alert_at"] = occurred_at
-            print("[slack] alert sent: low_water", flush=True)
+            print("[notification] alert sent: low_water", flush=True)
         else:
             low_water["active"] = False
             low_water["last_recovery_at"] = occurred_at
             low_water["water_ok_streak"] = 0
-            print("[slack] recovery sent: water_ok", flush=True)
+            print("[notification] recovery sent: water_ok", flush=True)
         sent_events.append((event, occurred_at))
 
     try:

@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import send_sensor_raspberrypi2
-from slack_notifier import load_notification_state, process_notifications
+from slack_notifier import LINE_PUSH_MESSAGE_URL, load_notification_state, process_notifications
 
 
 class FakeResponse:
@@ -36,7 +36,7 @@ class SlackNotifierTest(unittest.TestCase):
     def tearDown(self):
         self.temporary_directory.cleanup()
 
-    def post_success(self, url, json, timeout):
+    def post_success(self, url, json, timeout, headers=None):
         self.messages.append(json["text"])
         return FakeResponse()
 
@@ -45,6 +45,8 @@ class SlackNotifierTest(unittest.TestCase):
             payload(float_state),
             state_path=self.state_path,
             webhook_url="https://example.invalid/slack",
+            line_channel_access_token="",
+            line_to_id="",
             post=self.post_success,
         )
 
@@ -55,6 +57,51 @@ class SlackNotifierTest(unittest.TestCase):
         self.assertEqual(len(self.messages), 1)
         self.assertIn("Plant IoT Alert", self.messages[0])
         self.assertIn("培地表面の湿潤状態", self.messages[0])
+
+    def test_low_water_sends_line_when_configured(self):
+        posts = []
+
+        def post(url, json, timeout, headers=None):
+            posts.append((url, json, headers))
+            return FakeResponse()
+
+        process_notifications(
+            payload("low_water"),
+            state_path=self.state_path,
+            webhook_url="https://example.invalid/slack",
+            line_channel_access_token="line-token",
+            line_to_id="U123",
+            post=post,
+        )
+
+        self.assertEqual([post[0] for post in posts], [
+            "https://example.invalid/slack",
+            LINE_PUSH_MESSAGE_URL,
+        ])
+        self.assertEqual(posts[1][1]["to"], "U123")
+        self.assertEqual(
+            posts[1][2],
+            {"Authorization": "Bearer line-token"},
+        )
+        self.assertIn("Plant IoT Alert", posts[1][1]["messages"][0]["text"])
+
+    def test_line_failure_does_not_retry_after_slack_success(self):
+        def post(url, json, timeout, headers=None):
+            if url == LINE_PUSH_MESSAGE_URL:
+                raise RuntimeError("line unavailable")
+            return FakeResponse()
+
+        process_notifications(
+            payload("low_water"),
+            state_path=self.state_path,
+            webhook_url="https://example.invalid/slack",
+            line_channel_access_token="line-token",
+            line_to_id="U123",
+            post=post,
+        )
+
+        state = load_notification_state(self.state_path)
+        self.assertTrue(state["low_water"]["active"])
 
     def test_continuing_low_water_does_not_duplicate(self):
         self.process("low_water")
@@ -82,19 +129,23 @@ class SlackNotifierTest(unittest.TestCase):
             payload("low_water"),
             state_path=self.state_path,
             webhook_url="",
+            line_channel_access_token="",
+            line_to_id="",
         )
 
         state = load_notification_state(self.state_path)
         self.assertFalse(state["low_water"]["active"])
 
     def test_failed_slack_send_is_retried(self):
-        def post_failure(url, json, timeout):
+        def post_failure(url, json, timeout, headers=None):
             raise RuntimeError("network unavailable")
 
         process_notifications(
             payload("low_water"),
             state_path=self.state_path,
             webhook_url="https://example.invalid/slack",
+            line_channel_access_token="",
+            line_to_id="",
             post=post_failure,
         )
         self.process("low_water")
@@ -108,6 +159,8 @@ class SlackNotifierTest(unittest.TestCase):
             primary_payload,
             state_path=self.state_path,
             webhook_url="https://example.invalid/slack",
+            line_channel_access_token="",
+            line_to_id="",
             post=self.post_success,
         )
 

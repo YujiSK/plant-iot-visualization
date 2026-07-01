@@ -3,6 +3,7 @@
 
 import hashlib
 import hmac
+import json
 import logging
 import os
 import time
@@ -13,6 +14,16 @@ from urllib.parse import quote
 
 import requests
 from dotenv import load_dotenv
+
+from ai_observation import (
+    analyze_observation,
+    compare_observations,
+    data_url_from_image_bytes,
+    extract_ai_observation_from_note,
+    extract_observed_at_from_note,
+    format_comparison_for_slack,
+    format_observation_for_slack,
+)
 
 try:
     from fastapi import FastAPI, Header, HTTPException, Request
@@ -28,7 +39,10 @@ load_dotenv()
 LOGGER = logging.getLogger("slack_observation")
 JST = timezone(timedelta(hours=9), "JST")
 SLACK_CHAT_POST_MESSAGE_URL = "https://slack.com/api/chat.postMessage"
-NOTE_PREFIX = "Slackに植物観察写真が投稿されました。AI解析は未実施です。"
+NOTE_PREFIX = (
+    "Slackに植物観察写真が投稿されました。"
+    "AI観察支援は画像AIによる非診断の観察支援です。"
+)
 
 
 @dataclass(frozen=True)
@@ -40,6 +54,8 @@ class ObservationConfig:
     observation_channel_id: str
     device_id: str = "raspberrypi2"
     location_id: str = "location-b"
+    openai_api_key: str = ""
+    openai_vision_model: str = "gpt-4.1"
 
     @classmethod
     def from_env(cls) -> "ObservationConfig":
@@ -60,8 +76,19 @@ class ObservationConfig:
             "observation_channel_id": os.getenv("SLACK_OBSERVATION_CHANNEL_ID", ""),
             "device_id": os.getenv("DEVICE_ID", "raspberrypi2"),
             "location_id": os.getenv("LOCATION_ID", "location-b"),
+            "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
+            "openai_vision_model": os.getenv("OPENAI_VISION_MODEL", "gpt-4.1"),
         }
-        missing = [env_names[key] for key, value in values.items() if not value]
+        required_keys = [
+            "supabase_url",
+            "supabase_key",
+            "slack_bot_token",
+            "signing_secret",
+            "observation_channel_id",
+            "device_id",
+            "location_id",
+        ]
+        missing = [env_names[key] for key in required_keys if not values[key]]
         if missing:
             raise RuntimeError(
                 "Slack observation bot disabled: missing " + ", ".join(missing)
@@ -165,19 +192,148 @@ def fetch_nearest_sensor_log(
     return min(rows, key=distance)
 
 
+def fetch_previous_ai_observation(
+    config: ObservationConfig,
+    http_client=requests,
+    limit: int = 10,
+) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        normalized_result = fetch_previous_plant_observation(
+            config, http_client=http_client
+        )
+        if normalized_result[0] is not None:
+            return normalized_result
+    except Exception as exc:
+        LOGGER.error(
+            "plant_observations previous lookup failed: %s: %s",
+            type(exc).__name__,
+            exc,
+        )
+
+    scoped_result = _fetch_previous_ai_observation(
+        config,
+        http_client,
+        limit,
+        extra_note_filters=[
+            f"device_id={config.device_id}",
+            f"location_id={config.location_id}",
+        ],
+    )
+    if scoped_result[0] is not None:
+        return scoped_result
+    return _fetch_previous_ai_observation(config, http_client, limit)
+
+
+def fetch_previous_plant_observation(
+    config: ObservationConfig,
+    http_client=requests,
+) -> tuple[dict[str, Any] | None, str | None]:
+    select = "observed_at,raw_ai_json"
+    query = (
+        f"select={select}"
+        f"&device_id=eq.{quote(config.device_id, safe='')}"
+        f"&location_id=eq.{quote(config.location_id, safe='')}"
+        "&order=observed_at.desc"
+        "&limit=1"
+    )
+    response = http_client.get(
+        f"{config.supabase_url}/rest/v1/plant_observations?{query}",
+        headers=supabase_headers(config),
+        timeout=10,
+    )
+    response.raise_for_status()
+    rows = response.json()
+    if not isinstance(rows, list) or not rows:
+        return None, None
+
+    row = rows[0]
+    if not isinstance(row, dict):
+        return None, None
+    raw_ai_json = row.get("raw_ai_json")
+    return raw_ai_json if isinstance(raw_ai_json, dict) else None, row.get("observed_at")
+
+
+def _fetch_previous_ai_observation(
+    config: ObservationConfig,
+    http_client=requests,
+    limit: int = 10,
+    extra_note_filters: list[str] | None = None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    note_filters = ["ai_observation_json="] + (extra_note_filters or [])
+    query_parts = [
+        "select=created_at,note",
+        "action_type=eq.checked",
+        *[f"note=ilike.{quote(f'*{item}*', safe='*')}" for item in note_filters],
+        "order=created_at.desc",
+        f"limit={limit}",
+    ]
+    query = "&".join(query_parts)
+    response = http_client.get(
+        f"{config.supabase_url}/rest/v1/care_logs?{query}",
+        headers=supabase_headers(config),
+        timeout=10,
+    )
+    response.raise_for_status()
+    rows = response.json()
+    if not isinstance(rows, list):
+        return None, None
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        note = row.get("note")
+        previous = extract_ai_observation_from_note(note)
+        if previous is None:
+            continue
+        previous_observed_at = extract_observed_at_from_note(note) or row.get(
+            "created_at"
+        )
+        return previous, previous_observed_at
+    return None, None
+
+
 def slack_file_url(slack_file: dict[str, Any]) -> str | None:
     return slack_file.get("url_private") or slack_file.get("permalink")
+
+
+def fetch_slack_image_bytes(
+    slack_file: dict[str, Any],
+    config: ObservationConfig,
+    http_client=requests,
+) -> tuple[bytes | None, str | None]:
+    url = slack_file.get("url_private_download") or slack_file.get("url_private")
+    if not url:
+        return None, None
+    response = http_client.get(
+        url,
+        headers={"Authorization": f"Bearer {config.slack_bot_token}"},
+        timeout=20,
+    )
+    response.raise_for_status()
+    content_type = None
+    headers = getattr(response, "headers", None)
+    if headers:
+        content_type = headers.get("Content-Type")
+    return response.content, content_type or slack_file.get("mimetype")
 
 
 def build_note(
     observation: dict[str, Any],
     observed_at: datetime,
     nearest_sensor_log: dict[str, Any] | None,
+    device_id: str | None = None,
+    location_id: str | None = None,
+    ai_observation: dict[str, Any] | None = None,
+    ai_observation_error: str | None = None,
+    observation_comparison: dict[str, Any] | None = None,
+    observation_comparison_error: str | None = None,
 ) -> str:
     slack_file = observation["file"]
     parts = [
         NOTE_PREFIX,
         f"observed_at={observed_at.strftime('%Y-%m-%d %H:%M:%S JST')}",
+        f"device_id={device_id}" if device_id else None,
+        f"location_id={location_id}" if location_id else None,
         f"slack_channel_id={observation.get('channel')}",
         f"slack_user_id={observation.get('user')}",
         f"slack_ts={observation.get('ts')}",
@@ -186,6 +342,7 @@ def build_note(
         f"slack_file_mimetype={slack_file.get('mimetype')}",
         f"slack_file_url={slack_file_url(slack_file)}",
     ]
+    parts = [part for part in parts if part is not None]
     if nearest_sensor_log:
         parts.extend(
             [
@@ -198,6 +355,20 @@ def build_note(
                 f"nearest_light_lux={nearest_sensor_log.get('light_lux')}",
             ]
         )
+    if ai_observation:
+        parts.append(
+            "ai_observation_json="
+            + json.dumps(ai_observation, ensure_ascii=False, sort_keys=True)
+        )
+    if ai_observation_error:
+        parts.append(f"ai_observation_error={ai_observation_error}")
+    if observation_comparison:
+        parts.append(
+            "observation_comparison_json="
+            + json.dumps(observation_comparison, ensure_ascii=False, sort_keys=True)
+        )
+    if observation_comparison_error:
+        parts.append(f"observation_comparison_error={observation_comparison_error}")
     return "\n".join(parts)
 
 
@@ -205,11 +376,25 @@ def build_care_log_payload(
     observation: dict[str, Any],
     config: ObservationConfig,
     nearest_sensor_log: dict[str, Any] | None = None,
+    ai_observation: dict[str, Any] | None = None,
+    ai_observation_error: str | None = None,
+    observation_comparison: dict[str, Any] | None = None,
+    observation_comparison_error: str | None = None,
 ) -> dict[str, Any]:
     observed_at = slack_ts_to_jst(observation["ts"])
     payload = {
         "action_type": "checked",
-        "note": build_note(observation, observed_at, nearest_sensor_log),
+        "note": build_note(
+            observation,
+            observed_at,
+            nearest_sensor_log,
+            config.device_id,
+            config.location_id,
+            ai_observation,
+            ai_observation_error,
+            observation_comparison,
+            observation_comparison_error,
+        ),
         "vitality_score": (
             nearest_sensor_log.get("vitality_score") if nearest_sensor_log else None
         ),
@@ -243,6 +428,66 @@ def insert_care_log(
         return False
 
 
+def build_plant_observation_payload(
+    observation: dict[str, Any],
+    config: ObservationConfig,
+    nearest_sensor_log: dict[str, Any] | None,
+    ai_observation: dict[str, Any],
+) -> dict[str, Any]:
+    observed_at = slack_ts_to_jst(observation["ts"])
+    payload = {
+        "observed_at": observed_at.astimezone(timezone.utc).isoformat(),
+        "sensor_log_id": (
+            nearest_sensor_log.get("id") if nearest_sensor_log else None
+        ),
+        "device_id": config.device_id,
+        "location_id": config.location_id,
+        "image_url": slack_file_url(observation["file"]),
+        "growth_stage": ai_observation.get("growth_stage"),
+        "true_leaf_detected": ai_observation.get("true_leaf_detected"),
+        "true_leaf_pair_count": ai_observation.get("true_leaf_pair_count"),
+        "plant_count_estimate": ai_observation.get("plant_count_estimate"),
+        "crowding": ai_observation.get("crowding"),
+        "leaf_color": ai_observation.get("leaf_color"),
+        "leaf_size": ai_observation.get("leaf_size"),
+        "wilting": ai_observation.get("wilting"),
+        "yellowing": ai_observation.get("yellowing"),
+        "root_visibility": ai_observation.get("root_visibility"),
+        "root_length_estimate": ai_observation.get("root_length_estimate"),
+        "confidence": ai_observation.get("confidence"),
+        "summary": ai_observation.get("summary"),
+        "next_action": ai_observation.get("next_action"),
+        "raw_ai_json": ai_observation,
+        "model": config.openai_vision_model,
+    }
+    return {key: value for key, value in payload.items() if value is not None}
+
+
+def insert_plant_observation(
+    payload: dict[str, Any], config: ObservationConfig, http_client=requests
+) -> bool:
+    try:
+        response = http_client.post(
+            f"{config.supabase_url}/rest/v1/plant_observations",
+            json=payload,
+            headers=supabase_headers(config, prefer="return=minimal"),
+            timeout=10,
+        )
+        if not response.ok:
+            LOGGER.error(
+                "plant_observations insert failed: status=%s body=%s",
+                response.status_code,
+                response.text,
+            )
+            return False
+        return True
+    except Exception as exc:
+        LOGGER.error(
+            "plant_observations insert failed: %s: %s", type(exc).__name__, exc
+        )
+        return False
+
+
 def format_value(value: Any, suffix: str = "") -> str:
     return "取得不可" if value is None else f"{value}{suffix}"
 
@@ -251,14 +496,16 @@ def build_success_reply(
     observed_at: datetime,
     config: ObservationConfig,
     nearest_sensor_log: dict[str, Any] | None = None,
+    ai_observation: dict[str, Any] | None = None,
+    ai_observation_error: str | None = None,
+    observation_comparison: dict[str, Any] | None = None,
+    observation_comparison_error: str | None = None,
 ) -> str:
     message = (
         "🌱 観察写真を記録しました。\n\n"
         f"device: {config.device_id}\n"
         f"location: {config.location_id}\n"
-        f"記録時刻: {observed_at.strftime('%Y-%m-%d %H:%M JST')}\n\n"
-        "この段階ではAI解析は行っていません。\n"
-        "次の段階で、発芽・子葉・本葉・水位確認などの観察支援を追加予定です。"
+        f"記録時刻: {observed_at.strftime('%Y-%m-%d %H:%M JST')}"
     )
     if nearest_sensor_log:
         message += (
@@ -269,6 +516,14 @@ def build_success_reply(
             f"{format_value(nearest_sensor_log.get('solution_temperature'), '℃')}\n"
             f"照度: {format_value(nearest_sensor_log.get('light_lux'), ' lx')}"
         )
+    if ai_observation:
+        message += "\n\n" + format_observation_for_slack(ai_observation)
+    elif ai_observation_error:
+        message += "\n\nAI観察支援: 今回は取得できませんでした。"
+    if observation_comparison:
+        message += "\n\n" + format_comparison_for_slack(observation_comparison)
+    elif observation_comparison_error:
+        message += "\n\n前回との比較: 今回は取得できませんでした。"
     return message
 
 
@@ -316,7 +571,56 @@ def process_slack_event(
     except Exception as exc:
         LOGGER.error("nearest sensor lookup failed: %s: %s", type(exc).__name__, exc)
 
-    payload = build_care_log_payload(observation, config, nearest_sensor_log)
+    ai_observation = None
+    ai_observation_error = None
+    try:
+        image_bytes, image_mimetype = fetch_slack_image_bytes(
+            observation["file"], config, http_client=http_client
+        )
+        image_url = slack_file_url(observation["file"])
+        if image_bytes is not None:
+            image_url = data_url_from_image_bytes(image_bytes, image_mimetype)
+        ai_observation = analyze_observation(
+            image_url=image_url,
+            nearest_sensor_log=nearest_sensor_log,
+            device_id=config.device_id,
+            location_id=config.location_id,
+            observed_at=observed_at,
+            openai_api_key=config.openai_api_key,
+            model=config.openai_vision_model,
+            http_client=http_client,
+        )
+    except Exception as exc:
+        ai_observation_error = f"{type(exc).__name__}: {exc}"
+        LOGGER.error("AI observation failed: %s", ai_observation_error)
+
+    observation_comparison = None
+    observation_comparison_error = None
+    if ai_observation:
+        try:
+            previous_observation, previous_observed_at = fetch_previous_ai_observation(
+                config, http_client=http_client
+            )
+            observation_comparison = compare_observations(
+                ai_observation,
+                previous_observation,
+                previous_observed_at,
+            )
+        except Exception as exc:
+            observation_comparison_error = f"{type(exc).__name__}: {exc}"
+            LOGGER.error(
+                "observation comparison failed: %s", observation_comparison_error
+            )
+
+    payload = build_care_log_payload(
+        observation,
+        config,
+        nearest_sensor_log,
+        ai_observation,
+        ai_observation_error,
+        observation_comparison,
+        observation_comparison_error,
+    )
     if not insert_care_log(payload, config, http_client=http_client):
         post_slack_reply(
             observation["channel"],
@@ -327,10 +631,30 @@ def process_slack_event(
         )
         return {"status": "failed", "care_log_created": False}
 
+    plant_observation_created = False
+    if ai_observation:
+        plant_payload = build_plant_observation_payload(
+            observation,
+            config,
+            nearest_sensor_log,
+            ai_observation,
+        )
+        plant_observation_created = insert_plant_observation(
+            plant_payload, config, http_client=http_client
+        )
+
     reply_sent = post_slack_reply(
         observation["channel"],
         observation["ts"],
-        build_success_reply(observed_at, config, nearest_sensor_log),
+        build_success_reply(
+            observed_at,
+            config,
+            nearest_sensor_log,
+            ai_observation,
+            ai_observation_error,
+            observation_comparison,
+            observation_comparison_error,
+        ),
         config,
         http_client=http_client,
     )
@@ -338,6 +662,9 @@ def process_slack_event(
         "status": "recorded",
         "care_log_created": True,
         "nearest_sensor_log_found": nearest_sensor_log is not None,
+        "ai_observation_created": ai_observation is not None,
+        "plant_observation_created": plant_observation_created,
+        "observation_comparison_created": observation_comparison is not None,
         "reply_sent": reply_sent,
     }
 

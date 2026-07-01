@@ -200,7 +200,7 @@ def process_sensor_cycle(float_triggered=None):
     try:
         process_notifications(payload, recovery_confirmations=1)
     except Exception as exc:
-        print(f"[slack] failed: {type(exc).__name__}: {exc}", flush=True)
+        print(f"[notification] failed: {type(exc).__name__}: {exc}", flush=True)
 
     return payload
 
@@ -223,7 +223,7 @@ def process_float_transition(float_state, latest_payload=None):
     try:
         process_notifications(payload, recovery_confirmations=1)
     except Exception as exc:
-        print(f"[slack] failed: {type(exc).__name__}: {exc}", flush=True)
+        print(f"[notification] failed: {type(exc).__name__}: {exc}", flush=True)
 
     if float_state == "water_ok":
         send_recovery_care_log(payload, datetime.now().astimezone().isoformat())

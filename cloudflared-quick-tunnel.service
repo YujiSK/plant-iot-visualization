@@ -1,0 +1,15 @@
+[Unit]
+Description=Cloudflare Quick Tunnel for Plant IoT Slack Observation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/plant-iot
+ExecStart=/usr/local/bin/cloudflared tunnel --url http://127.0.0.1:8010 --metrics 127.0.0.1:20246 --loglevel info
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

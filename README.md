@@ -91,6 +91,8 @@ LIGHT_EVALUATION_START_HOUR=9
 LIGHT_EVALUATION_END_HOUR=15
 MANUAL_SEND_MIN_INTERVAL_SECONDS=60
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/your/webhook/path
+LINE_CHANNEL_ACCESS_TOKEN=your-line-messaging-api-channel-access-token
+LINE_TO_ID=your-line-user-or-group-id
 NOTIFICATION_STATE_PATH=/home/pi/plant-iot/notification_state.json
 ```
 
@@ -102,12 +104,16 @@ machine running `slack_observation_bot.py`:
 SLACK_BOT_TOKEN=xoxb-your-bot-token
 SLACK_SIGNING_SECRET=your-slack-signing-secret
 SLACK_OBSERVATION_CHANNEL_ID=C0123456789
+OPENAI_API_KEY=sk-your-openai-api-key
+OPENAI_VISION_MODEL=gpt-4.1
 ```
 
 The observation bot also reads `SUPABASE_URL`, `SUPABASE_KEY`, `DEVICE_ID`, and
 `LOCATION_ID`. For the current deployment, run it with `DEVICE_ID=raspberrypi2`
-and `LOCATION_ID=location-b`. Keep all Slack tokens and Supabase keys in `.env`;
-do not commit them.
+and `LOCATION_ID=location-b`. `OPENAI_API_KEY` enables GPT Vision analysis via
+the Responses API. `OPENAI_VISION_MODEL` defaults to `gpt-4.1` when omitted.
+Keep all Slack tokens, OpenAI keys, and Supabase keys in `.env`; do not commit
+them.
 
 Slack App settings for photo observation:
 
@@ -193,19 +199,21 @@ duplicate rows.
 Regular sends are aligned to wall-clock interval boundaries. With the default
 `SENSOR_INTERVAL_SECONDS=300`, readings run at 00, 05, 10, 15, ... minutes.
 
-## Slack water-level notifications
+## Water-level notifications
 
-Only `raspberrypi2` sends Slack notifications. Set `SLACK_WEBHOOK_URL` in the
-secondary device's `.env`; never add the real URL to Git. The existing systemd
-unit already reads `/home/pi/plant-iot/.env`.
+Only `raspberrypi2` sends water-level notifications. Set `SLACK_WEBHOOK_URL` in
+the secondary device's `.env` to send Slack alerts. To also send LINE alerts,
+set `LINE_CHANNEL_ACCESS_TOKEN` and `LINE_TO_ID` for the LINE Messaging API push
+message flow. Never add real URLs, tokens, or recipient IDs to Git. The existing
+systemd unit already reads `/home/pi/plant-iot/.env`.
 
 The first `low_water` reading sends an alert. Continued low-water readings are
 suppressed. A recovery notification is sent after two consecutive `water_ok`
 readings. Notification state is stored in `NOTIFICATION_STATE_PATH`, which
 defaults to `notification_state.json` beside `slack_notifier.py`.
 
-Slack errors are logged with a `[slack]` prefix and do not stop sensor reads or
-Supabase writes.
+Slack and LINE errors are logged with `[slack]` and `[line]` prefixes and do not
+stop sensor reads or Supabase writes.
 
 ## Sensor fields
 
@@ -249,10 +257,34 @@ This feature is an observation-recording feature, not AI diagnosis. Its purpose
 is to keep plant photos in the project timeline and make later comparison with
 sensor values, `daily_sensor_analysis`, and `care_logs` easier.
 
-Future phases may add AI observation support for extracting visible facts such
-as germination, cotyledons, true leaves, yellowing, wilting, medium wetness, and
-whether the reservoir is visible. Retake guidance and observation quality scores
-are intentionally out of scope for the first phase.
+`ai_observation.py` adds GPT Vision observation support through the OpenAI
+Responses API. It sends the Slack image as an `input_image` and requests strict
+JSON Schema output. The structured `ai_observation_json` includes
+`growth_stage`, `true_leaf_detected`, `true_leaf_pair_count`,
+`cotyledon_visible`, `plant_count_estimate`, `crowding`, `leaf_color`,
+`leaf_size`, `wilting`, `yellowing`, `root_visibility`,
+`root_length_estimate`, `confidence`, `summary`, and `next_action`. The Slack
+reply includes this observation support block, `care_logs.note` stores the same
+data as `ai_observation_json=...`, and `plant_observations` stores normalized
+columns plus `raw_ai_json`.
+
+Phase 3 adds a minimal growth-change comparison. The bot reads the latest
+previous `care_logs.note` containing `ai_observation_json=...`, compares growth
+stage, estimated plant count, and crowding with the current observation, then
+adds a `前回との比較` block to the Slack reply. The comparison JSON is stored in
+`care_logs.note` as `observation_comparison_json=...`. New notes also include
+`device_id=...` and `location_id=...` so future comparisons can prefer the same
+device and location.
+
+The observation module is intentionally not a disease diagnosis system. If
+`OPENAI_API_KEY` is not set, it returns conservative fallback values so Slack
+photo logging still works, but normalized AI quality is lower.
+
+Apply the normalized observation table before relying on `plant_observations`:
+
+```bash
+psql "$SUPABASE_DB_URL" -f supabase_plant_observations.sql
+```
 
 ## Slack写真観察Botの常駐化
 
@@ -284,14 +316,22 @@ curl -i http://127.0.0.1:8010/slack/events
 
 `405 Method Not Allowed` が返れば、FastAPI アプリは起動している。
 
-外部公開は現時点では Cloudflare Quick Tunnel を手動起動する。
+外部公開は現時点では Cloudflare Quick Tunnel を systemd で常駐化している。
 
 ```bash
-/tmp/cloudflared tunnel --url http://localhost:8010
+systemctl status cloudflared-quick-tunnel.service --no-pager
 ```
 
-表示された `https://xxxxx.trycloudflare.com/slack/events` を Slack App の
-Request URL に設定する。
+ログから `https://xxxxx.trycloudflare.com` を取り出し、`/slack/events`
+を付けて Slack App の Request URL に設定する。
 
 Quick Tunnel は起動ごとに URL が変わるため、恒久運用時は Cloudflare
 named tunnel への移行を検討する。
+
+URL 確認:
+
+```bash
+journalctl -u cloudflared-quick-tunnel.service -b --no-pager -o cat \
+  | rg -o 'https://[[:alnum:]-]+\.trycloudflare\.com' \
+  | tail -n1
+```
