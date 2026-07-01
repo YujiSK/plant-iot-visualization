@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch
 from datetime import datetime, timezone
+import hashlib
 
 from slack_observation_bot import (
     ObservationConfig,
@@ -158,6 +159,17 @@ class SlackObservationBotTest(unittest.TestCase):
         self.assertEqual(plant_observation_posts[0]["sensor_log_id"], 10)
         self.assertEqual(plant_observation_posts[0]["growth_stage"], "cotyledon")
         self.assertIn("raw_ai_json", plant_observation_posts[0])
+        raw_ai_json = plant_observation_posts[0]["raw_ai_json"]
+        self.assertEqual(raw_ai_json["slack_ts"], "1781622600.000000")
+        self.assertEqual(raw_ai_json["slack_file_id"], "F123")
+        self.assertEqual(raw_ai_json["slack_file_name"], "basil.jpg")
+        self.assertEqual(raw_ai_json["image_byte_size"], len(b"fake-image"))
+        self.assertEqual(raw_ai_json["image_mime_type"], "image/jpeg")
+        self.assertEqual(raw_ai_json["provider"], "openai")
+        self.assertEqual(raw_ai_json["model"], "gpt-4.1")
+        self.assertEqual(
+            raw_ai_json["image_sha256"], hashlib.sha256(b"fake-image").hexdigest()
+        )
         slack_posts = [
             kwargs["json"]
             for url, kwargs in http.posts
@@ -167,6 +179,19 @@ class SlackObservationBotTest(unittest.TestCase):
         self.assertIn("AI観察支援", slack_posts[0]["text"])
         self.assertIn("生育段階: 子葉期", slack_posts[0]["text"])
         self.assertIn("前回との比較", slack_posts[0]["text"])
+
+    def test_slack_reply_success_is_logged(self):
+        http = FakeHttp()
+
+        with self.assertLogs("slack_observation", level="WARNING") as logs:
+            result = process_slack_event(image_event(), config(), http_client=http)
+
+        self.assertTrue(result["reply_sent"])
+        text = "\n".join(logs.output)
+        self.assertIn("Slack reply sent", text)
+        self.assertIn("channel=C_OBSERVE", text)
+        self.assertIn("thread_ts=1781622600.000000", text)
+        self.assertNotIn("xoxb-token", text)
 
     def test_duplicate_slack_event_is_skipped_before_ai_work(self):
         http = FakeHttp(
@@ -181,11 +206,83 @@ class SlackObservationBotTest(unittest.TestCase):
         result = process_slack_event(image_event(), config(), http_client=http)
 
         self.assertEqual(result["status"], "duplicate")
+        self.assertEqual(result["skip_reason"], "duplicate_slack_ts")
         self.assertEqual(
             [url for url, _ in http.gets if "files.slack.com" in url],
             [],
         )
         self.assertEqual(http.posts, [])
+
+    def test_duplicate_slack_file_id_is_skipped_before_download(self):
+        http = FakeHttp(
+            plant_rows=[
+                {
+                    "raw_ai_json": {
+                        "slack_file_id": "F123",
+                        "image_sha256": "other",
+                    }
+                }
+            ]
+        )
+
+        result = process_slack_event(image_event(), config(), http_client=http)
+
+        self.assertEqual(result["status"], "duplicate")
+        self.assertEqual(result["skip_reason"], "duplicate_slack_file_id")
+        self.assertEqual(
+            [url for url, _ in http.gets if "files.slack.com" in url],
+            [],
+        )
+        self.assertEqual(http.posts, [])
+
+    def test_duplicate_image_sha256_is_skipped_after_download(self):
+        image_sha256 = hashlib.sha256(b"fake-image").hexdigest()
+        http = FakeHttp(
+            plant_rows=[
+                {
+                    "raw_ai_json": {
+                        "slack_file_id": "F999",
+                        "image_sha256": image_sha256,
+                    }
+                }
+            ]
+        )
+
+        event = image_event()
+        event["files"][0]["id"] = "F_NEW"
+        result = process_slack_event(event, config(), http_client=http)
+
+        self.assertEqual(result["status"], "duplicate")
+        self.assertEqual(result["skip_reason"], "duplicate_image_sha256")
+        self.assertEqual(
+            len([url for url, _ in http.gets if "files.slack.com" in url]),
+            1,
+        )
+        self.assertEqual(http.posts, [])
+
+    def test_different_image_sha256_is_processed(self):
+        http = FakeHttp(
+            plant_rows=[
+                {
+                    "raw_ai_json": {
+                        "slack_file_id": "F999",
+                        "image_sha256": "different",
+                    }
+                }
+            ]
+        )
+
+        event = image_event()
+        event["files"][0]["id"] = "F_NEW"
+        result = process_slack_event(event, config(), http_client=http)
+
+        self.assertEqual(result["status"], "recorded")
+        plant_observation_posts = [
+            kwargs["json"]
+            for url, kwargs in http.posts
+            if url.endswith("/rest/v1/plant_observations")
+        ]
+        self.assertEqual(len(plant_observation_posts), 1)
 
     def test_text_only_event_is_ignored(self):
         event = image_event(files=[])

@@ -112,6 +112,17 @@ class ObservationConfig:
         return self.openai_vision_model
 
 
+@dataclass(frozen=True)
+class ImageIdentity:
+    sha256: str
+    byte_size: int
+    mime_type: str | None
+
+    @property
+    def short_sha256(self) -> str:
+        return self.sha256[:12]
+
+
 def slack_ts_to_jst(slack_ts: str) -> datetime:
     return datetime.fromtimestamp(float(slack_ts), tz=timezone.utc).astimezone(JST)
 
@@ -342,6 +353,43 @@ def fetch_slack_image_bytes(
     return response.content, content_type or slack_file.get("mimetype")
 
 
+def build_image_identity(
+    image_bytes: bytes | None,
+    image_mime_type: str | None,
+) -> ImageIdentity | None:
+    if image_bytes is None:
+        return None
+    return ImageIdentity(
+        sha256=hashlib.sha256(image_bytes).hexdigest(),
+        byte_size=len(image_bytes),
+        mime_type=image_mime_type,
+    )
+
+
+def image_identity_metadata(
+    observation: dict[str, Any],
+    config: ObservationConfig,
+    image_identity: ImageIdentity | None,
+) -> dict[str, Any]:
+    slack_file = observation["file"]
+    metadata = {
+        "provider": config.ai_vision_provider,
+        "model": config.selected_ai_model,
+        "slack_ts": observation.get("ts"),
+        "slack_file_id": slack_file.get("id"),
+        "slack_file_name": slack_file.get("name"),
+    }
+    if image_identity:
+        metadata.update(
+            {
+                "image_sha256": image_identity.sha256,
+                "image_byte_size": image_identity.byte_size,
+                "image_mime_type": image_identity.mime_type,
+            }
+        )
+    return metadata
+
+
 def build_note(
     observation: dict[str, Any],
     observed_at: datetime,
@@ -458,8 +506,13 @@ def build_plant_observation_payload(
     config: ObservationConfig,
     nearest_sensor_log: dict[str, Any] | None,
     ai_observation: dict[str, Any],
+    image_identity: ImageIdentity | None = None,
 ) -> dict[str, Any]:
     observed_at = slack_ts_to_jst(observation["ts"])
+    raw_ai_json = {
+        **ai_observation,
+        **image_identity_metadata(observation, config, image_identity),
+    }
     payload = {
         "observed_at": observed_at.astimezone(timezone.utc).isoformat(),
         "sensor_log_id": (
@@ -482,7 +535,7 @@ def build_plant_observation_payload(
         "confidence": ai_observation.get("confidence"),
         "summary": ai_observation.get("summary"),
         "next_action": ai_observation.get("next_action"),
-        "raw_ai_json": ai_observation,
+        "raw_ai_json": raw_ai_json,
         "model": config.selected_ai_model,
     }
     return {key: value for key, value in payload.items() if value is not None}
@@ -513,7 +566,7 @@ def insert_plant_observation(
         return False
 
 
-def observation_already_recorded(
+def care_log_exists_for_slack_ts(
     observation: dict[str, Any],
     config: ObservationConfig,
     http_client=requests,
@@ -535,6 +588,41 @@ def observation_already_recorded(
     response.raise_for_status()
     rows = response.json()
     return isinstance(rows, list) and bool(rows)
+
+
+def find_existing_plant_observation_identity(
+    *,
+    config: ObservationConfig,
+    slack_file_id: str | None = None,
+    image_sha256: str | None = None,
+    http_client=requests,
+    limit: int = 200,
+) -> str | None:
+    if not slack_file_id and not image_sha256:
+        return None
+    query = (
+        "select=created_at,raw_ai_json"
+        "&order=created_at.desc"
+        f"&limit={limit}"
+    )
+    response = http_client.get(
+        f"{config.supabase_url}/rest/v1/plant_observations?{query}",
+        headers=supabase_headers(config),
+        timeout=10,
+    )
+    response.raise_for_status()
+    rows = response.json()
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        raw_ai_json = row.get("raw_ai_json") if isinstance(row, dict) else None
+        if not isinstance(raw_ai_json, dict):
+            continue
+        if slack_file_id and raw_ai_json.get("slack_file_id") == slack_file_id:
+            return "duplicate_slack_file_id"
+        if image_sha256 and raw_ai_json.get("image_sha256") == image_sha256:
+            return "duplicate_image_sha256"
+    return None
 
 
 def format_value(value: Any, suffix: str = "") -> str:
@@ -598,6 +686,13 @@ def post_slack_reply(
         if not body.get("ok"):
             LOGGER.error("Slack reply failed: %s", body)
             return False
+        LOGGER.warning(
+            "Slack reply sent: channel=%s thread_ts=%s ok=%s status=%s",
+            channel,
+            thread_ts,
+            body.get("ok"),
+            getattr(response, "status_code", "unknown"),
+        )
         return True
     except Exception as exc:
         LOGGER.error("Slack reply failed: %s: %s", type(exc).__name__, exc)
@@ -611,13 +706,36 @@ def process_slack_event(
     if observation is None:
         return {"status": "ignored"}
 
-    if observation_already_recorded(observation, config, http_client=http_client):
+    if care_log_exists_for_slack_ts(observation, config, http_client=http_client):
         LOGGER.warning(
-            "duplicate Slack observation skipped: slack_ts=%s file_id=%s",
+            "duplicate_slack_ts skipped: slack_ts=%s file_id=%s",
             observation.get("ts"),
             observation["file"].get("id"),
         )
-        return {"status": "duplicate", "care_log_created": False}
+        return {
+            "status": "duplicate",
+            "skip_reason": "duplicate_slack_ts",
+            "care_log_created": False,
+        }
+
+    slack_file_id = observation["file"].get("id")
+    duplicate_reason = find_existing_plant_observation_identity(
+        config=config,
+        slack_file_id=slack_file_id,
+        http_client=http_client,
+    )
+    if duplicate_reason:
+        LOGGER.warning(
+            "%s skipped: slack_ts=%s file_id=%s",
+            duplicate_reason,
+            observation.get("ts"),
+            slack_file_id,
+        )
+        return {
+            "status": "duplicate",
+            "skip_reason": duplicate_reason,
+            "care_log_created": False,
+        }
 
     observed_at = slack_ts_to_jst(observation["ts"])
     nearest_sensor_log = None
@@ -630,10 +748,39 @@ def process_slack_event(
 
     ai_observation = None
     ai_observation_error = None
+    image_identity = None
     try:
         image_bytes, image_mimetype = fetch_slack_image_bytes(
             observation["file"], config, http_client=http_client
         )
+        image_identity = build_image_identity(image_bytes, image_mimetype)
+        if image_identity:
+            LOGGER.warning(
+                "image identity computed: sha256=%s bytes=%s mime_type=%s",
+                image_identity.short_sha256,
+                image_identity.byte_size,
+                image_identity.mime_type,
+            )
+            duplicate_reason = find_existing_plant_observation_identity(
+                config=config,
+                image_sha256=image_identity.sha256,
+                http_client=http_client,
+            )
+            if duplicate_reason:
+                LOGGER.warning(
+                    "%s skipped: slack_ts=%s file_id=%s sha256=%s bytes=%s mime_type=%s",
+                    duplicate_reason,
+                    observation.get("ts"),
+                    slack_file_id,
+                    image_identity.short_sha256,
+                    image_identity.byte_size,
+                    image_identity.mime_type,
+                )
+                return {
+                    "status": "duplicate",
+                    "skip_reason": duplicate_reason,
+                    "care_log_created": False,
+                }
         image_url = slack_file_url(observation["file"])
         LOGGER.warning(
             "AI observation start: provider=%s model=%s image_bytes=%s",
@@ -711,13 +858,15 @@ def process_slack_event(
             config,
             nearest_sensor_log,
             ai_observation,
+            image_identity,
         )
         LOGGER.warning(
-            "plant_observations insert start: growth_stage=%s true_leaf_detected=%s true_leaf_pair_count=%s model=%s",
+            "plant_observations insert start: growth_stage=%s true_leaf_detected=%s true_leaf_pair_count=%s model=%s image_sha256=%s",
             plant_payload.get("growth_stage"),
             plant_payload.get("true_leaf_detected"),
             plant_payload.get("true_leaf_pair_count"),
             plant_payload.get("model"),
+            (plant_payload.get("raw_ai_json") or {}).get("image_sha256", "")[:12],
         )
         plant_observation_created = insert_plant_observation(
             plant_payload, config, http_client=http_client
