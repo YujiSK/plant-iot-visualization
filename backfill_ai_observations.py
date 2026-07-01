@@ -326,8 +326,39 @@ def run_backfill(
     candidates = load_backfill_candidates(config, http_client=http_client, limit=limit)
     stats.candidates_found = len(candidates)
     LOGGER.warning("backfill candidates found: %s", len(candidates))
+    seen_slack_ts: set[str] = set()
+    seen_slack_file_ids: set[str] = set()
+    seen_image_sha256: set[str] = set()
 
     for candidate in candidates:
+        in_run_duplicate_reason = in_run_duplicate_candidate_reason(
+            candidate, seen_slack_ts, seen_slack_file_ids
+        )
+        if in_run_duplicate_reason:
+            _count_skip(stats, in_run_duplicate_reason)
+            plan = {
+                "care_log_id": candidate.care_log_id,
+                "observed_at": (
+                    candidate.observed_at.isoformat() if candidate.observed_at else None
+                ),
+                "slack_ts": candidate.slack_ts,
+                "slack_file_id": candidate.slack_file_id,
+                "slack_file_name": candidate.metadata.get("slack_file_name"),
+                "action": "skip",
+                "reason": in_run_duplicate_reason,
+            }
+            if dry_run:
+                stats.plan.append(plan)
+            LOGGER.warning(
+                "%s skipped in current backfill run: care_log_id=%s slack_ts=%s slack_file_id=%s",
+                in_run_duplicate_reason,
+                candidate.care_log_id,
+                candidate.slack_ts,
+                candidate.slack_file_id,
+            )
+            continue
+        remember_candidate_identity(candidate, seen_slack_ts, seen_slack_file_ids)
+
         if dry_run:
             plan = plan_candidate(
                 candidate,
@@ -364,6 +395,16 @@ def run_backfill(
             image_identity = build_image_identity(image_bytes, image_mime_type)
             if not image_identity:
                 raise ValueError("downloaded image was empty")
+            if image_identity.sha256 in seen_image_sha256:
+                _count_skip(stats, "duplicate_image_sha256")
+                LOGGER.warning(
+                    "duplicate_image_sha256 skipped in current backfill run: care_log_id=%s slack_file_id=%s sha256=%s",
+                    candidate.care_log_id,
+                    candidate.slack_file_id,
+                    image_identity.short_sha256,
+                )
+                continue
+            seen_image_sha256.add(image_identity.sha256)
             LOGGER.warning(
                 "backfill image identity: slack_file_id=%s sha256=%s bytes=%s mime_type=%s",
                 candidate.slack_file_id,
@@ -502,6 +543,29 @@ def _count_skip(stats: BackfillStats, reason: str) -> None:
         stats.skipped_duplicate_sha256 += 1
     else:
         stats.skipped_existing += 1
+
+
+def in_run_duplicate_candidate_reason(
+    candidate: BackfillCandidate,
+    seen_slack_ts: set[str],
+    seen_slack_file_ids: set[str],
+) -> str | None:
+    if candidate.slack_ts and candidate.slack_ts in seen_slack_ts:
+        return "duplicate_slack_ts"
+    if candidate.slack_file_id and candidate.slack_file_id in seen_slack_file_ids:
+        return "duplicate_slack_file_id"
+    return None
+
+
+def remember_candidate_identity(
+    candidate: BackfillCandidate,
+    seen_slack_ts: set[str],
+    seen_slack_file_ids: set[str],
+) -> None:
+    if candidate.slack_ts:
+        seen_slack_ts.add(candidate.slack_ts)
+    if candidate.slack_file_id:
+        seen_slack_file_ids.add(candidate.slack_file_id)
 
 
 if __name__ == "__main__":

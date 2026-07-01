@@ -178,6 +178,21 @@ class BackfillAIObservationsTest(unittest.TestCase):
         self.assertEqual(stats.plan[0]["reason"], "duplicate_slack_file_id")
         self.assertEqual(stats.skipped_duplicate_file_id, 1)
 
+    def test_duplicate_slack_ts_in_same_dry_run_is_skipped(self):
+        http = FakeHttp(
+            care_rows=[
+                care_row(care_id="first", slack_ts="1781622600.000000", file_id="F1"),
+                care_row(care_id="retry", slack_ts="1781622600.000000", file_id="F2"),
+            ]
+        )
+
+        stats = run_backfill(config=config(), dry_run=True, http_client=http)
+
+        self.assertEqual(stats.plan[0]["action"], "process")
+        self.assertEqual(stats.plan[1]["action"], "skip")
+        self.assertEqual(stats.plan[1]["reason"], "duplicate_slack_ts")
+        self.assertEqual(stats.skipped_existing, 1)
+
     def test_duplicate_image_sha256_skip(self):
         image_sha256 = hashlib.sha256(b"historical-image").hexdigest()
         http = FakeHttp(
