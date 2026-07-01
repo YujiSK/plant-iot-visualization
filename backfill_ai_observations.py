@@ -174,9 +174,16 @@ def load_backfill_candidates(
     config: ObservationConfig,
     http_client=requests,
     limit: int | None = None,
+    slack_file_id: str | None = None,
 ) -> list[BackfillCandidate]:
     rows = fetch_candidate_rows(config, http_client=http_client)
     candidates = [candidate_from_row(row) for row in rows if is_backfill_candidate(row)]
+    if slack_file_id:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if candidate.slack_file_id == slack_file_id
+        ]
     ordered = order_candidates(candidates)
     return ordered[:limit] if limit is not None else ordered
 
@@ -320,10 +327,16 @@ def run_backfill(
     dry_run: bool = False,
     check_download: bool = False,
     limit: int | None = None,
+    slack_file_id: str | None = None,
     http_client=requests,
 ) -> BackfillStats:
     stats = BackfillStats()
-    candidates = load_backfill_candidates(config, http_client=http_client, limit=limit)
+    candidates = load_backfill_candidates(
+        config,
+        http_client=http_client,
+        limit=limit,
+        slack_file_id=slack_file_id,
+    )
     stats.candidates_found = len(candidates)
     LOGGER.warning("backfill candidates found: %s", len(candidates))
     seen_slack_ts: set[str] = set()
@@ -508,6 +521,10 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--check-download", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument(
+        "--slack-file-id",
+        help="Process only the matching historical Slack file candidate.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
@@ -517,6 +534,7 @@ def main() -> int:
         dry_run=args.dry_run,
         check_download=args.check_download,
         limit=args.limit,
+        slack_file_id=args.slack_file_id,
     )
     if args.dry_run:
         print_dry_run_plan(stats)

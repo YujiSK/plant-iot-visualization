@@ -156,6 +156,20 @@ class BackfillAIObservationsTest(unittest.TestCase):
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0].care_log_id, "old")
 
+    def test_targeted_slack_file_id_filtering(self):
+        rows = [
+            care_row(care_id="first", file_id="F_FIRST"),
+            care_row(care_id="target", file_id="F_TARGET"),
+        ]
+        http = FakeHttp(care_rows=rows)
+
+        candidates = load_backfill_candidates(
+            config(), http_client=http, slack_file_id="F_TARGET"
+        )
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0].care_log_id, "target")
+
     def test_dry_run_does_not_call_external_services(self):
         http = FakeHttp(care_rows=[care_row()])
 
@@ -177,6 +191,27 @@ class BackfillAIObservationsTest(unittest.TestCase):
         self.assertEqual(stats.plan[0]["action"], "skip")
         self.assertEqual(stats.plan[0]["reason"], "duplicate_slack_file_id")
         self.assertEqual(stats.skipped_duplicate_file_id, 1)
+
+    def test_targeted_already_processed_target_skips_safely(self):
+        http = FakeHttp(
+            care_rows=[care_row(file_id="F_TARGET")],
+            plant_rows=[{"raw_ai_json": {"slack_file_id": "F_TARGET"}}],
+        )
+
+        stats = run_backfill(
+            config=config(),
+            dry_run=False,
+            slack_file_id="F_TARGET",
+            http_client=http,
+        )
+
+        self.assertEqual(stats.candidates_found, 1)
+        self.assertEqual(stats.skipped_duplicate_file_id, 1)
+        self.assertEqual(
+            [url for url, _ in http.gets if "files.slack.com" in url],
+            [],
+        )
+        self.assertEqual(http.posts, [])
 
     def test_duplicate_slack_ts_in_same_dry_run_is_skipped(self):
         http = FakeHttp(
@@ -221,6 +256,24 @@ class BackfillAIObservationsTest(unittest.TestCase):
         self.assertEqual(stats.failed_ai, 1)
         self.assertEqual(http.posts, [])
 
+    def test_targeted_gemini_failure_does_not_insert(self):
+        http = FakeHttp(care_rows=[care_row(file_id="F_TARGET")])
+
+        with patch(
+            "backfill_ai_observations.analyze_observation",
+            side_effect=RuntimeError("gemini high demand"),
+        ):
+            stats = run_backfill(
+                config=config(),
+                dry_run=False,
+                slack_file_id="F_TARGET",
+                http_client=http,
+            )
+
+        self.assertEqual(stats.candidates_found, 1)
+        self.assertEqual(stats.failed_ai, 1)
+        self.assertEqual(http.posts, [])
+
     def test_successful_insert_payload(self):
         http = FakeHttp(care_rows=[care_row()])
 
@@ -241,6 +294,33 @@ class BackfillAIObservationsTest(unittest.TestCase):
             payload["raw_ai_json"]["image_sha256"],
             hashlib.sha256(b"historical-image").hexdigest(),
         )
+
+    def test_targeted_success_inserts_one_row_without_slack_reply(self):
+        http = FakeHttp(
+            care_rows=[
+                care_row(care_id="other", file_id="F_OTHER"),
+                care_row(care_id="target", file_id="F_TARGET"),
+            ]
+        )
+
+        with patch(
+            "backfill_ai_observations.analyze_observation",
+            return_value=ai_observation(),
+        ):
+            stats = run_backfill(
+                config=config(),
+                dry_run=False,
+                slack_file_id="F_TARGET",
+                http_client=http,
+            )
+
+        self.assertEqual(stats.candidates_found, 1)
+        self.assertEqual(stats.processed_success, 1)
+        self.assertEqual(len(http.posts), 1)
+        self.assertTrue(http.posts[0][0].endswith("/rest/v1/plant_observations"))
+        payload = http.posts[0][1]["json"]
+        self.assertEqual(payload["raw_ai_json"]["slack_file_id"], "F_TARGET")
+        self.assertNotIn("chat.postMessage", http.posts[0][0])
 
     def test_build_payload_sets_backfilled_true(self):
         candidate = load_backfill_candidates(
