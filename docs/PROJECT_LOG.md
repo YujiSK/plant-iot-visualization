@@ -746,3 +746,39 @@
 
 - `python -m py_compile slack_observation_bot.py ai_observation.py` 成功。
 - `python -m unittest test_ai_observation.py test_slack_observation_bot.py` 成功。22件成功。
+
+## 2026-07-03
+
+### Slack観察Botの一時復旧とGitHub Pages観察表示
+
+#### 確認したこと
+
+- `slack_observation_bot` が停止しており、`curl -i http://localhost:8080/slack/events` は接続失敗だった。
+- `.venv/bin/uvicorn` は存在し、FastAPIアプリを起動できる状態だった。
+- `/tmp/cloudflared` は消えていたため、`/home/pi/bin/cloudflared` へ永続配置した。
+- 手動の `uvicorn slack_observation_bot:app --host 0.0.0.0 --port 8080` でも起動確認し、ローカルGETで `405 Method Not Allowed` が返ることを確認した。
+- 既存の `plant-slack-observation.service` が `127.0.0.1:8010` 相当で稼働中であることを確認した。
+- 既存の `cloudflared-quick-tunnel.service` が `http://127.0.0.1:8010` を公開しており、`https://role-telling-demands-inter.trycloudflare.com/slack/events` が外部URL経由で `405 Method Not Allowed` を返すことを確認した。
+
+#### 変更したこと
+
+- `docs/index.html` のホーム画面にAI観察ログ領域を追加した。
+- `plant_observations` から最新観察と観察タイムラインをanon readで取得するようにした。
+- 最新観察カードに、生育段階、本葉、推定株数、密集度、次の確認、`slack_file_id`、`image_sha256`、`sensor_log_id`、confidenceを表示するようにした。
+- 観察タイムラインに通常観察とバックフィル観察のラベル、Slack file id、画像hash短縮値を表示するようにした。
+- `plant_observations` 取得に失敗しても、既存の `sensor_logs` 最新カードと推移グラフは継続表示するようにした。
+- `raw_ai_json` がJSON文字列として返る場合でも、通常観察とバックフィル観察の判定が壊れないようにした。
+- 研究メモと概要を、センサー値、Gemini Vision観察支援、可視化、関心、行動、空間体験の流れに合わせて更新した。
+
+#### 検証
+
+- `python -m py_compile main.py send_sensor.py send_sensor_raspi.py send_sensor_raspberrypi2.py bh1750.py ds18b20.py float_switch.py vitality.py care_log.py slack_notifier.py slack_observation_bot.py ai_observation.py backfill_ai_observations.py` 成功。
+- `python -m unittest test_vitality.py test_ds18b20.py test_bh1750.py test_float_switch.py test_ai_observation.py test_slack_observation_bot.py test_backfill_ai_observations.py` 成功。71件成功。
+- Python標準HTMLパーサーで `docs/index.html` の構造確認に成功。
+- `chromium --headless --dump-dom` でページを読み込み、AI観察カード、観察タイムライン、backfilled/normal件数、`slack_file_id`、`image_sha256` がDOMに描画されることを確認した。
+- Chromiumスクリーンショットで、ホーム画面のセンサー表示とAI観察ログ表示が崩れていないことを目視確認した。
+
+#### 注意点
+
+- Quick Tunnel URL は一時URLであり、再起動すると変わる可能性がある。
+- `slack_observation_bot` のsystemd常駐は稼働中だが、継続運用では Cloudflare named tunnel への移行を優先する。

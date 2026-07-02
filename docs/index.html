@@ -266,6 +266,78 @@
     .research-note { padding: 22px; background: linear-gradient(135deg, #f8fbf9, #edf6f0); }
     .research-note h2 { margin: 0 0 12px; font-size: 16px; }
     .research-note p { margin: 0; color: #4d6559; font-size: 14px; line-height: 1.85; }
+    .observation-section { margin-top: 18px; }
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+    .section-heading h2 { margin: 0; font-size: 18px; }
+    .section-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .observation-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+      gap: 18px;
+    }
+    .observation-card, .timeline-card { padding: 22px; }
+    .observation-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+    .observation-title { margin: 0; font-size: 18px; }
+    .observation-meta { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 9px;
+      color: var(--blue-700);
+      background: var(--blue-100);
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .source-badge.backfill { color: var(--yellow-700); background: var(--yellow-100); }
+    .observation-summary {
+      margin: 0 0 16px;
+      color: #435b50;
+      font-size: 14px;
+      line-height: 1.85;
+    }
+    .observation-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .identity-box {
+      padding: 13px;
+      border: 1px solid #e4ece8;
+      border-radius: 12px;
+      background: #f8fbf9;
+      color: #52675d;
+      font-size: 12px;
+      line-height: 1.75;
+      overflow-wrap: anywhere;
+    }
+    .identity-box strong { color: var(--ink); }
+    .identity-box + .identity-box { margin-top: 10px; }
+    .timeline-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .timeline-item {
+      padding: 13px;
+      border: 1px solid #e4ece8;
+      border-radius: 12px;
+      background: #fbfdfc;
+    }
+    .timeline-row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .timeline-stage { font-weight: 800; }
+    .timeline-date { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .timeline-summary { margin: 7px 0 0; color: #52675d; font-size: 13px; line-height: 1.7; }
     .filter-card { padding: 18px; margin-bottom: 18px; }
     .filter-row {
       display: grid;
@@ -403,7 +475,7 @@
       .nav-title { font-size: 13px; }
       .nav-description { font-size: 10px; }
       .main { padding: 28px 16px 42px; }
-      .device-grid, .home-bottom, .about-grid { grid-template-columns: 1fr; }
+      .device-grid, .home-bottom, .observation-grid, .about-grid { grid-template-columns: 1fr; }
       .about-card.full { grid-column: auto; }
     }
     @media (max-width: 600px) {
@@ -472,9 +544,25 @@
           </section>
           <aside class="card research-note" aria-label="研究メモ">
             <h2>研究メモ</h2>
-            <p>写真だけでは貯水部の状態が分からず、センサーだけでは植物の見た目が分かりません。両方を記録して判断します。</p>
+            <p>センサー値で環境を見て、Gemini Visionの観察支援で写真から見える事実を整理します。可視化から関心、行動、空間体験へつなげる管理支援として記録します。</p>
           </aside>
         </div>
+        <section class="observation-section" aria-labelledby="observation-heading">
+          <div class="section-heading">
+            <div>
+              <h2 id="observation-heading">AI観察ログ</h2>
+              <p class="section-note">Slack写真、Gemini Vision、センサー値を同じ時系列で確認します。</p>
+            </div>
+          </div>
+          <div class="observation-grid">
+            <article id="latest-observation" class="card observation-card" aria-live="polite">
+              <div class="loading">観察ログを読み込み中...</div>
+            </article>
+            <article id="observation-timeline" class="card timeline-card" aria-live="polite">
+              <div class="loading">観察タイムラインを読み込み中...</div>
+            </article>
+          </div>
+        </section>
       </section>
 
       <section id="view-trends" class="view" data-view="trends" role="tabpanel" tabindex="0">
@@ -553,18 +641,18 @@
             <ul class="progress-list">
               <li class="progress-item"><span class="check">✓</span><span>2台のRaspberry Piからデータを取得</span></li>
               <li class="progress-item"><span class="check">✓</span><span>実際の栽培環境で計測を継続</span></li>
-              <li class="progress-item"><span class="check">✓</span><span>植物写真と観察内容を記録</span></li>
-              <li class="progress-item"><span class="check">✓</span><span>日ごとの分析を開始</span></li>
+              <li class="progress-item"><span class="check">✓</span><span>Slack写真をGemini Visionで観察支援</span></li>
+              <li class="progress-item"><span class="check">✓</span><span>plant_observationsで通常記録とバックフィルを可視化</span></li>
             </ul>
           </article>
           <article class="card about-card full">
             <div class="about-number">05</div>
-            <h2>次の段階</h2>
+            <h2>研究上の位置づけ</h2>
             <ul class="progress-list">
-              <li class="progress-item"><span class="check next">1</span><span>異常を知らせる通知機能</span></li>
-              <li class="progress-item"><span class="check next">2</span><span>対応後に回復したかを記録する機能</span></li>
-              <li class="progress-item"><span class="check next">3</span><span>写真から観察内容を整理する支援</span></li>
-              <li class="progress-item"><span class="check next">4</span><span>AIを使った観察補助</span></li>
+              <li class="progress-item"><span class="check next">1</span><span>可視化: センサーと写真観察を同じ画面で見る</span></li>
+              <li class="progress-item"><span class="check next">2</span><span>関心: 低水位、本葉、密集などの変化に気づく</span></li>
+              <li class="progress-item"><span class="check next">3</span><span>行動: 給水、間引き、観察継続の判断へつなげる</span></li>
+              <li class="progress-item"><span class="check next">4</span><span>空間体験: 植物とIoTが生活空間で関わる体験として評価する</span></li>
             </ul>
           </article>
         </div>
@@ -599,9 +687,19 @@
       "float_switch_triggered", "float_switch_state",
       "device_id", "location_id", "vitality_score", "message", "created_at",
     ].join(",");
+    const OBSERVATION_FIELDS = [
+      "id", "observed_at", "created_at", "sensor_log_id",
+      "device_id", "location_id", "image_url", "growth_stage",
+      "true_leaf_detected", "true_leaf_pair_count", "plant_count_estimate",
+      "crowding", "leaf_color", "leaf_size", "wilting", "yellowing",
+      "root_visibility", "root_length_estimate", "confidence",
+      "summary", "next_action", "model", "raw_ai_json",
+    ].join(",");
     const state = {
       route: "home",
       latest: {},
+      latestObservation: null,
+      observations: [],
       trendDevice: "raspberrypi2",
       trendPeriod: "24h",
       trendMetric: "vitality",
@@ -643,6 +741,47 @@
 
     function waterLabel(status) {
       return { dry: "low_water", transition: "境界", wet: "wet", enough_water: "water_ok" }[status] || "不明";
+    }
+
+    function growthStageLabel(stage) {
+      return {
+        seed: "播種",
+        germination: "発芽",
+        cotyledon: "子葉",
+        true_leaf_1: "本葉1対",
+        true_leaf_2: "本葉2対",
+        vegetative: "栄養成長",
+      }[stage] || "未分類";
+    }
+
+    function crowdingLabel(value) {
+      return { low: "低い", medium: "中程度", high: "高い", unknown: "不明" }[value] || "不明";
+    }
+
+    function yesNo(value) {
+      if (value === true) return "あり";
+      if (value === false) return "なし";
+      return "不明";
+    }
+
+    function shortHash(value) {
+      return value ? String(value).slice(0, 12) : "--";
+    }
+
+    function rawAiJson(row) {
+      const raw = row?.raw_ai_json;
+      if (!raw) return {};
+      if (typeof raw === "object") return raw;
+      try {
+        return JSON.parse(raw);
+      } catch (error) {
+        console.warn("Failed to parse raw_ai_json", error);
+        return {};
+      }
+    }
+
+    function sourceLabel(row) {
+      return rawAiJson(row).backfilled ? "backfilled" : "normal";
     }
 
     function lightText(row) {
@@ -697,12 +836,16 @@
       activateRoute(routeFromHash());
     }
 
-    async function fetchRows(query) {
-      const response = await fetch(`${BASE}/rest/v1/sensor_logs?${query}`, {
+    async function fetchTableRows(table, query) {
+      const response = await fetch(`${BASE}/rest/v1/${table}?${query}`, {
         headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
+    }
+
+    async function fetchRows(query) {
+      return fetchTableRows("sensor_logs", query);
     }
 
     async function fetchLatest(deviceId) {
@@ -734,6 +877,27 @@
         if (page.length < pageSize) break;
       }
       return collected;
+    }
+
+    async function fetchLatestObservation() {
+      const query = new URLSearchParams({
+        select: OBSERVATION_FIELDS,
+        device_id: "eq.raspberrypi2",
+        order: "observed_at.desc",
+        limit: "1",
+      });
+      const rows = await fetchTableRows("plant_observations", query);
+      return rows[0] || null;
+    }
+
+    async function fetchObservationTimeline(limit = 8) {
+      const query = new URLSearchParams({
+        select: OBSERVATION_FIELDS,
+        device_id: "eq.raspberrypi2",
+        order: "observed_at.desc",
+        limit: String(limit),
+      });
+      return fetchTableRows("plant_observations", query);
     }
 
     function renderDeviceCard(deviceId, row) {
@@ -807,6 +971,109 @@
       const latestTime = [primary?.created_at, secondary?.created_at].filter(Boolean).sort().at(-1);
       document.getElementById("sidebar-time").textContent =
         `最終更新 ${latestTime ? toJst(latestTime, { hour: "2-digit", minute: "2-digit" }) : "--:--"}`;
+    }
+
+    function renderObservationEmpty(message) {
+      document.getElementById("latest-observation").innerHTML =
+        `<div class="loading">${escapeHtml(message)}</div>`;
+      document.getElementById("observation-timeline").innerHTML =
+        '<div class="loading">観察タイムラインはまだ表示できません。</div>';
+    }
+
+    function renderLatestObservation(row) {
+      const container = document.getElementById("latest-observation");
+      if (!row) {
+        container.innerHTML = '<div class="loading">観察ログがまだありません。</div>';
+        return;
+      }
+      const raw = rawAiJson(row);
+      const source = sourceLabel(row);
+      const badgeClass = source === "backfilled" ? "source-badge backfill" : "source-badge";
+      const metrics = [
+        ["生育段階", growthStageLabel(row.growth_stage), "Gemini Vision"],
+        ["本葉", `${yesNo(row.true_leaf_detected)} / ${row.true_leaf_pair_count ?? "--"}対`, "葉の進行"],
+        ["推定株数", row.plant_count_estimate ?? "--", "写真からの推定"],
+        ["密集", crowdingLabel(row.crowding), "間引き判断の材料"],
+      ];
+      container.innerHTML = `
+        <div class="observation-top">
+          <div>
+            <h3 class="observation-title">最新のAI観察</h3>
+            <div class="observation-meta">${escapeHtml(toJst(row.observed_at))}<br>model: ${escapeHtml(row.model || "--")}</div>
+          </div>
+          <span class="${badgeClass}">${source}</span>
+        </div>
+        <p class="observation-summary">${escapeHtml(row.summary || "観察要約はありません。")}</p>
+        <div class="observation-metrics">
+          ${metrics.map(([label, value, note]) => `
+            <div class="metric">
+              <div class="metric-label">${escapeHtml(label)}</div>
+              <div class="metric-value">${escapeHtml(value)}</div>
+              <div class="metric-note">${escapeHtml(note)}</div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="identity-box">
+          <strong>重複検出</strong><br>
+          slack_file_id: ${escapeHtml(raw.slack_file_id || "--")}<br>
+          image_sha256: ${escapeHtml(shortHash(raw.image_sha256))}<br>
+          sensor_log_id: ${escapeHtml(row.sensor_log_id ?? "--")} / confidence: ${escapeHtml(fmt(row.confidence, 2))}
+        </div>
+        <div class="identity-box">
+          <strong>次の確認</strong><br>${escapeHtml(row.next_action || "次回も同じ条件で観察してください。")}
+        </div>`;
+    }
+
+    function renderObservationTimeline(rows) {
+      const container = document.getElementById("observation-timeline");
+      if (!rows.length) {
+        container.innerHTML = '<div class="loading">観察タイムラインはまだありません。</div>';
+        return;
+      }
+      const backfilled = rows.filter((row) => rawAiJson(row).backfilled).length;
+      container.innerHTML = `
+        <div class="observation-top">
+          <div>
+            <h3 class="observation-title">観察タイムライン</h3>
+            <div class="observation-meta">取得範囲 ${rows.length}件 / backfilled ${backfilled}件 / normal ${rows.length - backfilled}件</div>
+          </div>
+        </div>
+        <ul class="timeline-list">
+          ${rows.map((row) => {
+            const raw = rawAiJson(row);
+            const source = sourceLabel(row);
+            return `
+              <li class="timeline-item">
+                <div class="timeline-row">
+                  <span class="timeline-stage">${escapeHtml(growthStageLabel(row.growth_stage))}</span>
+                  <span class="timeline-date">${escapeHtml(toJst(row.observed_at, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }))}</span>
+                </div>
+                <p class="timeline-summary">${escapeHtml(row.summary || row.next_action || "観察メモなし")}</p>
+                <div class="observation-meta">${escapeHtml(source)} / file ${escapeHtml(raw.slack_file_id || "--")} / sha ${escapeHtml(shortHash(raw.image_sha256))}</div>
+              </li>`;
+          }).join("")}
+        </ul>`;
+    }
+
+    function renderObservations() {
+      renderLatestObservation(state.latestObservation);
+      renderObservationTimeline(state.observations);
+    }
+
+    async function loadObservations() {
+      if (!BASE || !KEY) return;
+      try {
+        const [latestObservation, observations] = await Promise.all([
+          fetchLatestObservation(),
+          fetchObservationTimeline(),
+        ]);
+        state.latestObservation = latestObservation;
+        state.observations = observations;
+        renderObservations();
+      } catch (error) {
+        console.error(error);
+        renderObservationEmpty("AI観察ログを取得できませんでした。sensor_logsの表示は継続しています。");
+      }
     }
 
     async function loadLatest() {
@@ -993,6 +1260,7 @@
     async function refresh() {
       try {
         await loadLatest();
+        await loadObservations();
         if (state.route === "trends") await loadTrend();
       } catch (error) {
         console.error(error);
