@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -57,9 +57,23 @@ def init_outbox(db_path: Path | str | None = None) -> None:
         )
 
 
+def cleanup_synced(retention_days: int = 30, db_path: Path | str | None = None) -> int:
+    """Delete synced records older than retention_days to prevent database bloat."""
+    init_outbox(db_path)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+    with get_connection(db_path) as conn:
+        cursor = conn.execute(
+            """DELETE FROM outbox_queue
+               WHERE status = 'synced' AND synced_at IS NOT NULL AND synced_at < ?""",
+            (cutoff,),
+        )
+        return cursor.rowcount
+
+
 def enqueue(payload: dict[str, Any], db_path: Path | str | None = None) -> int:
     """Enqueue a payload into outbox_queue with status 'pending'."""
     init_outbox(db_path)
+    cleanup_synced(retention_days=30, db_path=db_path)
     device_id = payload.get("device_id", "unknown")
     if "created_at" not in payload:
         payload["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -102,6 +116,28 @@ def get_pending(limit: int = 50, db_path: Path | str | None = None) -> list[dict
             "created_at": row["created_at"],
         })
     return results
+
+
+def get_outbox_stats(db_path: Path | str | None = None) -> dict[str, Any]:
+    """Return pending count, oldest pending timestamp, and max retry count."""
+    init_outbox(db_path)
+    with get_connection(db_path) as conn:
+        row = conn.execute(
+            """SELECT COUNT(*) as count, MIN(created_at) as oldest, MAX(retry_count) as max_retry
+               FROM outbox_queue
+               WHERE status IN ('pending', 'failed')"""
+        ).fetchone()
+        if not row or row["count"] == 0:
+            return {
+                "pending_count": 0,
+                "oldest_pending": None,
+                "max_retry_count": 0,
+            }
+        return {
+            "pending_count": row["count"],
+            "oldest_pending": str(row["oldest"]) if row["oldest"] else None,
+            "max_retry_count": row["max_retry"] or 0,
+        }
 
 
 def mark_synced(record_ids: list[int] | int, db_path: Path | str | None = None) -> None:

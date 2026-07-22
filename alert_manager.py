@@ -131,6 +131,7 @@ def record_transmission_failure(
     line_token: str | None = None,
     line_to: str | None = None,
     post=requests.post,
+    outbox_db_path: Path | str | None = None,
 ) -> bool:
     """Record a transmission failure, update count, and send dual alerts if threshold met."""
     state = load_alert_state(state_path)
@@ -154,12 +155,23 @@ def record_transmission_failure(
             action = recommend_action(error_summary)
             last_success = tx["last_success_at"] or "Unknown"
 
+            from outbox import get_outbox_stats
+            db_p = outbox_db_path or (Path(state_path).parent / "data.db" if state_path else None)
+            stats = get_outbox_stats(db_path=db_p)
+
+            pending_cnt = stats.get("pending_count", count)
+            oldest_p = stats.get("oldest_pending") or "Unknown"
+            retry_cnt = stats.get("max_retry_count", count)
+
             msg = (
                 "🚨 Plant IoT Alert\n\n"
                 "Supabaseへの送信に失敗しています。\n\n"
                 f"{error_summary}\n\n"
                 f"Device:\n{device_id}\n\n"
                 f"Failure count:\n{count}\n\n"
+                f"Current pending:\n{pending_cnt}\n\n"
+                f"Oldest pending:\n{oldest_p}\n\n"
+                f"Retry count:\n{retry_cnt}\n\n"
                 f"Last successful upload:\n{last_success}\n\n"
                 f"Action recommended:\n{action}"
             )

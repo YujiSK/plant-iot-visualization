@@ -5,7 +5,17 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from outbox import count_pending, enqueue, flush_outbox, get_pending, init_outbox, mark_failed, mark_synced
+from outbox import (
+    cleanup_synced,
+    count_pending,
+    enqueue,
+    flush_outbox,
+    get_outbox_stats,
+    get_pending,
+    init_outbox,
+    mark_failed,
+    mark_synced,
+)
 
 
 class TestOutbox(unittest.TestCase):
@@ -66,6 +76,22 @@ class TestOutbox(unittest.TestCase):
             self.assertEqual(failed, 1)
             self.assertEqual(len(sent_items), 1)
             self.assertEqual(count_pending(db_path=db_path), 1)
+
+    def test_cleanup_synced_and_stats(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = Path(tmpdir) / "test_data.db"
+
+            rec_id = enqueue({"device_id": "raspberrypi2", "x": 100}, db_path=db_path)
+            mark_failed(rec_id, "error 1", db_path=db_path)
+
+            stats = get_outbox_stats(db_path=db_path)
+            self.assertEqual(stats["pending_count"], 1)
+            self.assertEqual(stats["max_retry_count"], 1)
+            self.assertIsNotNone(stats["oldest_pending"])
+
+            mark_synced(rec_id, db_path=db_path)
+            cleaned = cleanup_synced(retention_days=0, db_path=db_path)
+            self.assertEqual(cleaned, 1)
 
 
 if __name__ == "__main__":
