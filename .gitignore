@@ -8,4 +8,6 @@ data.db
 exports/
 notification_state.json
 notification_state.json.tmp
+alert_state.json
+alert_state.json.tmp
 supabase_health_check.log
