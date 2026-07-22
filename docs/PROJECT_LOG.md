@@ -782,3 +782,57 @@
 
 - Quick Tunnel URL は一時URLであり、再起動すると変わる可能性がある。
 - `slack_observation_bot` のsystemd常駐は稼働中だが、継続運用では Cloudflare named tunnel への移行を優先する。
+
+## 2026-07-22
+
+### 2026-07 障害インシデントの分析とシステム信頼性向上（Outbox / Dual Notification / Heartbeat / E2E Test）
+
+#### 1. 発生日時と障害概要
+- **対象期間**: 2026-07-11 ～ 2026-07-22（約11日間）
+- **対象機器**: 2号機（`raspberrypi2` / `plant-sensor-raspberrypi2.service`）
+- **障害内容**: `SUPABASE_SENSOR_KEY` の破損により、Supabase REST API (`/rest/v1/sensor_logs`) への INSERT リクエストがすべて `HTTP 401 Invalid API key` となり失敗していた。
+- **問題の本質**: センサー取得処理自体は正常稼働していたが、送信エラー発生時にログへ送信ペイロードを出力せずに例外終了していたため、**Silent Failure（送信失敗に約11日間誰も気付けない状態）** が発生した。
+
+#### 2. 根本原因の分析
+- `.env` の `SUPABASE_SENSOR_KEY` が無効化・破損していた。
+- `send_sensor_raspberrypi2.py` の `send_to_supabase` において、`response.raise_for_status()` がエラーログ出力（ペイロード出力）より前に実行されていたため、`sent: ...` のログ出力行に一度も到達せず、journalctl ログに観測値（温度・照度・水位）が記録されなかった。
+
+#### 3. 復旧処置
+- `.env` の `SUPABASE_SENSOR_KEY` を正しく再発行・更新。
+- 送信に失敗したログの抽出・復元可能性調査のため `scripts/backfill_journal_sensor_logs.py` を作成。
+
+#### 4. 恒久対策・信頼性向上実装
+1. **SQLite ローカル Outbox パターンの導入 (`outbox.py`)**:
+   - センサーデータ取得直後、Supabase 送信前にローカル SQLite (`data.db` 内の `outbox_queue` テーブル) へ `pending` 状態として即座に保存。
+   - 送信成功時のみ `synced` へ更新。送信失敗時は `failed` に設定し、次回送信サイクル時またはサービス起動時に自動再送 (Backfill)。
+   - **重複防止とデータ精度**: ペイロード内に実測タイムスタンプ (`created_at`) を保持し、再送時もデータ時系列を正確に維持。
+   - **DB肥大化防止**: 30日以上経過した `synced` レコードを自動削除する `cleanup_synced(30)` を追加。
+2. **安全なペイロードログ出力**:
+   - 送信失敗時、API Key や Secret 情報を除去した安全な JSON ペイロード全体を `journalctl` へ出力するよう改修。
+3. **二重障害アラート & 復旧通知 (`alert_manager.py`)**:
+   - HTTP 401/403/5xx/Timeout/Connection/DNS/SSL エラーが **3回連続** 発生した際、**Slack** Webhook と **LINE Messaging API** (Push Message API) の両方へ同一のアラートを自動送信。
+   - 通知項目に `Failure count`, `Current pending`, `Oldest pending`, `Retry count`, `Last successful upload`, `Action recommended` を表示。
+   - 1時間のクールダウン期間を設け通知スパムを防止。
+   - 障害復旧時には **Slack + LINE 両方へ復旧通知 (`✅ Plant IoT Recovered`)** を送信。
+4. **Heartbeat 監視 & システム自己監視の強化 (`supabase_health_check.py`)**:
+   - `plant-supabase-health.timer` を日次から **10分毎 (`*:0/10`)** 実行へ変更。
+   - Supabase 上の最新 `created_at` の経過時間を監視（15分以内: OK、30分以上: Warning、60分以上: Critical 通知）。
+   - Raspberry Pi のハードウェア自己監視（systemd サービス停止、ディスク使用率 90% 以上、CPU 温度 80°C 以上、メモリ使用率 90% 以上）を追加。
+
+#### 5. 障害検証 (E2E テスト)
+- 10ステップの E2E 障害シナリオテスト `scripts/run_e2e_test.py` を作成・実行：
+  1. 正常送信確認 (201 OK)
+  2. API Key 破損設定
+  3. 401 エラー 3 回発生
+  4. Slack 通知確認
+  5. LINE 通知確認
+  6. Outbox pending 蓄積確認 (3件)
+  7. API Key 復元
+  8. 自動再送実行 (4件一括同期)
+  9. pending 0 件確認
+  10. Slack & LINE 復旧通知確認
+- **検証結果**: **全 10 ステップ成功 (PASSED)**。全 93 件の単体・統合テストも合格。
+
+#### 6. 今後の運用方針
+- 定期運用監視（Outbox pending 滞留監視、LINE/Slack 通知頻度のモニタリング、`data.db` 容量確認）。
+- 将来の価値向上施策: Grafana ダッシュボード連携、GitHub 連動 OTA 更新、Home Assistant 連携。
