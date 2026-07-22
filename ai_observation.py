@@ -20,8 +20,11 @@ import requests
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
+GEMINI_GENERATE_CONTENT_URL_TEMPLATE = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DEFAULT_OPENAI_MODEL = "gpt-4.1"
 DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
+DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-3.1-flash-lite",)
+AI_VISION_TIMEOUT_SECONDS = 90
 DEFAULT_AI_VISION_PROVIDER = "openai"
 LOGGER = logging.getLogger("ai_observation")
 
@@ -178,6 +181,7 @@ def analyze_observation(
     device_id: str = "",
     location_id: str = "",
     observed_at: datetime | None = None,
+    user_note: str | None = None,
     ai_vision_provider: str | None = None,
     openai_api_key: str | None = None,
     openai_model: str | None = None,
@@ -223,11 +227,15 @@ def analyze_observation(
             device_id=device_id,
             location_id=location_id,
             observed_at=observed_at,
+            user_note=user_note,
             api_key=api_key,
             model=resolved_model,
             http_client=http_client,
         )
-        return validate_observation(observation)
+        normalized = validate_observation(observation)
+        normalized["provider"] = "openai"
+        normalized["model"] = resolved_model
+        return normalized
 
     api_key = (
         gemini_api_key
@@ -237,20 +245,57 @@ def analyze_observation(
     if not api_key:
         return fallback_observation(nearest_sensor_log)
     resolved_model = gemini_model or os.getenv("GEMINI_VISION_MODEL") or DEFAULT_GEMINI_MODEL
-    LOGGER.info("AI vision provider=gemini model=%s", resolved_model)
-    observation = analyze_with_gemini(
-        image_url=resolved_image_url,
-        image_bytes=image_bytes,
-        image_mimetype=image_mimetype,
-        nearest_sensor_log=nearest_sensor_log,
-        device_id=device_id,
-        location_id=location_id,
-        observed_at=observed_at,
-        api_key=api_key,
-        model=resolved_model,
-        http_client=http_client,
-    )
-    return validate_observation(observation)
+    last_error: Exception | None = None
+    for model_candidate in gemini_model_candidates(resolved_model):
+        LOGGER.info("AI vision provider=gemini model=%s", model_candidate)
+        try:
+            observation = analyze_with_gemini(
+                image_url=resolved_image_url,
+                image_bytes=image_bytes,
+                image_mimetype=image_mimetype,
+                nearest_sensor_log=nearest_sensor_log,
+                device_id=device_id,
+                location_id=location_id,
+                observed_at=observed_at,
+                user_note=user_note,
+                api_key=api_key,
+                model=model_candidate,
+                http_client=http_client,
+            )
+            normalized = validate_observation(observation)
+            normalized["provider"] = "gemini"
+            normalized["model"] = model_candidate
+            return normalized
+        except requests.exceptions.RequestException as exc:
+            last_error = exc
+            if not is_retryable_gemini_error(exc):
+                raise
+            LOGGER.warning(
+                "Gemini vision retrying with fallback after model=%s error=%s",
+                model_candidate,
+                exc.__class__.__name__,
+            )
+    if last_error is not None:
+        raise last_error
+    return fallback_observation(nearest_sensor_log)
+
+
+def gemini_model_candidates(primary_model: str) -> list[str]:
+    fallback_models = os.getenv("GEMINI_VISION_FALLBACK_MODELS")
+    models = [primary_model]
+    if fallback_models:
+        models.extend(model.strip() for model in fallback_models.split(","))
+    else:
+        models.extend(DEFAULT_GEMINI_FALLBACK_MODELS)
+    return list(dict.fromkeys(model for model in models if model))
+
+
+def is_retryable_gemini_error(exc: requests.exceptions.RequestException) -> bool:
+    if isinstance(exc, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)):
+        return True
+    response = getattr(exc, "response", None)
+    status_code = getattr(response, "status_code", None)
+    return status_code in {429, 500, 502, 503, 504}
 
 
 def analyze_with_openai(
@@ -260,6 +305,7 @@ def analyze_with_openai(
     device_id: str,
     location_id: str,
     observed_at: datetime | None,
+    user_note: str | None,
     api_key: str,
     model: str,
     http_client=requests,
@@ -272,6 +318,7 @@ def analyze_with_openai(
         device_id=device_id,
         location_id=location_id,
         observed_at=observed_at,
+        user_note=user_note,
         model=model,
     )
     response = http_client.post(
@@ -281,7 +328,7 @@ def analyze_with_openai(
             "Content-Type": "application/json",
         },
         json=payload,
-        timeout=30,
+        timeout=AI_VISION_TIMEOUT_SECONDS,
     )
     if not response.ok:
         LOGGER.error(
@@ -304,6 +351,7 @@ def analyze_with_gemini(
     device_id: str,
     location_id: str,
     observed_at: datetime | None,
+    user_note: str | None,
     api_key: str,
     model: str,
     http_client=requests,
@@ -318,23 +366,21 @@ def analyze_with_gemini(
         len(image_bytes),
         image_mimetype or "image/jpeg",
     )
-    payload = build_gemini_observation_payload(
+    payload = build_gemini_generate_content_payload(
         image_bytes=image_bytes,
         image_mimetype=image_mimetype,
         nearest_sensor_log=nearest_sensor_log,
         device_id=device_id,
         location_id=location_id,
         observed_at=observed_at,
-        model=model,
+        user_note=user_note,
     )
     response = http_client.post(
-        GEMINI_INTERACTIONS_URL,
-        headers={
-            "x-goog-api-key": api_key,
-            "Content-Type": "application/json",
-        },
+        GEMINI_GENERATE_CONTENT_URL_TEMPLATE.format(model=model),
+        params={"key": api_key},
+        headers={"Content-Type": "application/json"},
         json=payload,
-        timeout=30,
+        timeout=AI_VISION_TIMEOUT_SECONDS,
     )
     if not response.ok:
         LOGGER.error(
@@ -370,6 +416,7 @@ def build_openai_observation_payload(
     device_id: str,
     location_id: str,
     observed_at: datetime | None,
+    user_note: str | None = None,
     model: str,
 ) -> dict[str, Any]:
     prompt = build_vision_prompt(
@@ -377,6 +424,7 @@ def build_openai_observation_payload(
         device_id=device_id,
         location_id=location_id,
         observed_at=observed_at,
+        user_note=user_note,
     )
     return {
         "model": model,
@@ -404,6 +452,46 @@ def build_openai_observation_payload(
     }
 
 
+def build_gemini_generate_content_payload(
+    *,
+    image_bytes: bytes,
+    image_mimetype: str | None,
+    nearest_sensor_log: dict[str, Any] | None,
+    device_id: str,
+    location_id: str,
+    observed_at: datetime | None,
+    user_note: str | None = None,
+) -> dict[str, Any]:
+    prompt = build_vision_prompt(
+        nearest_sensor_log=nearest_sensor_log,
+        device_id=device_id,
+        location_id=location_id,
+        observed_at=observed_at,
+        user_note=user_note,
+    )
+    return {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": image_mimetype or "image/jpeg",
+                            "data": base64.b64encode(image_bytes).decode("ascii"),
+                        }
+                    },
+                ],
+            }
+        ],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseJsonSchema": AI_OBSERVATION_JSON_SCHEMA,
+            "temperature": 0.2,
+            "maxOutputTokens": 1000,
+        },
+    }
+
 def build_gemini_observation_payload(
     *,
     image_bytes: bytes,
@@ -413,12 +501,14 @@ def build_gemini_observation_payload(
     location_id: str,
     observed_at: datetime | None,
     model: str,
+    user_note: str | None = None,
 ) -> dict[str, Any]:
     prompt = build_vision_prompt(
         nearest_sensor_log=nearest_sensor_log,
         device_id=device_id,
         location_id=location_id,
         observed_at=observed_at,
+        user_note=user_note,
     )
     return {
         "model": model,
@@ -430,6 +520,7 @@ def build_gemini_observation_payload(
                 "mime_type": image_mimetype or "image/jpeg",
             },
         ],
+        "generation_config": {"thinking_level": "low"},
         "response_format": {
             "type": "text",
             "mime_type": "application/json",
@@ -444,9 +535,12 @@ def build_vision_prompt(
     device_id: str,
     location_id: str,
     observed_at: datetime | None,
+    user_note: str | None = None,
 ) -> str:
     sensor_context = json.dumps(nearest_sensor_log or {}, ensure_ascii=False, sort_keys=True)
     observed_at_text = observed_at.isoformat() if observed_at else "unknown"
+    note_text = (user_note or "").strip()
+    note_context = json.dumps(note_text, ensure_ascii=False) if note_text else "null"
     return "\n".join(
         [
             "You are helping record hydroponic basil growth from a Slack photo.",
@@ -460,6 +554,7 @@ def build_vision_prompt(
             f"device_id={device_id}",
             f"location_id={location_id}",
             f"observed_at={observed_at_text}",
+            f"slack_user_note={note_context}",
             f"nearest_sensor_log={sensor_context}",
         ]
     )
@@ -495,6 +590,14 @@ def parse_gemini_observation_response(response_body: dict[str, Any]) -> dict[str
             parsed = json.loads(text)
             if isinstance(parsed, dict):
                 return parsed
+    for candidate in response_body.get("candidates", []) or []:
+        content = candidate.get("content") or {}
+        for part in content.get("parts", []) or []:
+            text = part.get("text")
+            if isinstance(text, str) and text.strip():
+                parsed = json.loads(text)
+                if isinstance(parsed, dict):
+                    return parsed
     for step in response_body.get("steps", []) or []:
         for content in step.get("content", []) or []:
             text = content.get("text")

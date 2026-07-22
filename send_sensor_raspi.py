@@ -22,7 +22,9 @@ import requests
 import spidev
 from dotenv import load_dotenv
 
+from alert_manager import record_transmission_failure, record_transmission_success
 from ds18b20 import read_temperature as read_ds18b20_temperature
+from outbox import enqueue, flush_outbox
 from vitality import calculate_basil_vitality
 
 URL = "http://localhost:8000/sensor"
@@ -143,54 +145,45 @@ def read_solution_temperature():
         return None
 
 
-def send_to_supabase(payload):
-    """Send sensor payload to Supabase REST API without interrupting main loop."""
+def send_single_supabase_raw(payload):
     if not SUPABASE_ENDPOINT or not SUPABASE_SENSOR_KEY:
-        print("SUPABASE ERROR: SUPABASE_URL or SUPABASE_SENSOR_KEY is not set", flush=True)
-        return
-
+        raise RuntimeError("SUPABASE_URL or SUPABASE_SENSOR_KEY is not set")
     headers = {
         "apikey": SUPABASE_SENSOR_KEY,
         "Authorization": f"Bearer {SUPABASE_SENSOR_KEY}",
         "Content-Type": "application/json",
         "Prefer": "return=minimal",
     }
+    response = requests.post(SUPABASE_ENDPOINT, json=payload, headers=headers, timeout=10)
+    if not response.ok:
+        raise RuntimeError(f"HTTP {response.status_code}: {response.text[:200]}")
+    return True
 
+
+def send_to_supabase(payload):
+    """Send sensor payload to Supabase with outbox queue and alert manager."""
+    enqueue(payload)
+    last_error = None
     try:
-        response = requests.post(SUPABASE_ENDPOINT, json=payload, headers=headers, timeout=10)
-        print(f"SUPABASE URL: {SUPABASE_ENDPOINT}", flush=True)
-        print(f"SUPABASE STATUS: {response.status_code}", flush=True)
-        print(f"SUPABASE RESPONSE: {response.text}", flush=True)
-
-        retry = response
-        optional_sensor_fields = {
-            "solution_temperature",
-            "device_id",
-            "location_id",
-        }
-        if response.status_code >= 400 and optional_sensor_fields.intersection(payload):
-            retry_payload = {
-                key: value
-                for key, value in payload.items()
-                if key not in optional_sensor_fields
-            }
-            retry = requests.post(
-                SUPABASE_ENDPOINT, json=retry_payload, headers=headers, timeout=10
-            )
-            print("SUPABASE RETRY WITHOUT OPTIONAL SENSOR FIELDS", flush=True)
-            print(f"SUPABASE RETRY STATUS: {retry.status_code}", flush=True)
-            print(f"SUPABASE RETRY RESPONSE: {retry.text}", flush=True)
-
-        if retry.status_code >= 400 and has_adc_fields(payload):
-            legacy_payload = legacy_supabase_payload(payload)
-            legacy_retry = requests.post(
-                SUPABASE_ENDPOINT, json=legacy_payload, headers=headers, timeout=10
-            )
-            print("SUPABASE RETRY WITHOUT ADC FIELDS", flush=True)
-            print(f"SUPABASE RETRY STATUS: {legacy_retry.status_code}", flush=True)
-            print(f"SUPABASE RETRY RESPONSE: {legacy_retry.text}", flush=True)
+        synced_count, failed_count = flush_outbox(send_single_supabase_raw)
     except Exception as exc:
-        print("SUPABASE ERROR:", exc, flush=True)
+        synced_count = 0
+        failed_count = 1
+        last_error = str(exc)
+
+    if synced_count > 0:
+        resent = max(0, synced_count - 1)
+        record_transmission_success(DEVICE_ID, resent_count=resent)
+    else:
+        import json
+        payload_str = json.dumps(payload, ensure_ascii=False, indent=2)
+        err_desc = last_error or "Transmission failed"
+        print(
+            f"POST failed ({err_desc})\n"
+            f"payload={payload_str}",
+            flush=True,
+        )
+        record_transmission_failure(DEVICE_ID, f"POST failed: {err_desc}")
 
 
 def has_adc_fields(payload):

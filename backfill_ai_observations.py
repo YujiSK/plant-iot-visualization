@@ -49,6 +49,17 @@ class BackfillCandidate:
         return self.metadata.get("slack_file_id")
 
     @property
+    def slack_text(self) -> str | None:
+        value = self.metadata.get("slack_text_json")
+        if not value:
+            return None
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return value
+        return parsed if isinstance(parsed, str) and parsed.strip() else None
+
+    @property
     def observed_at(self) -> datetime | None:
         return parse_observed_at(self.metadata.get("observed_at")) or parse_observed_at(
             self.created_at
@@ -243,11 +254,12 @@ def build_backfill_payload(
         raise ValueError("candidate missing observed_at")
     slack_file = slack_file_from_candidate(candidate)
     nearest_sensor_log = nearest_sensor_log_from_candidate(candidate)
+    actual_model = ai_observation.get("model") or config.selected_ai_model
     raw_ai_json = {
         **ai_observation,
         "backfilled": True,
         "provider": config.ai_vision_provider,
-        "model": config.selected_ai_model,
+        "model": actual_model,
         "slack_ts": candidate.slack_ts,
         "slack_file_id": slack_file.get("id"),
         "slack_file_name": slack_file.get("name"),
@@ -276,7 +288,7 @@ def build_backfill_payload(
         "summary": ai_observation.get("summary"),
         "next_action": ai_observation.get("next_action"),
         "raw_ai_json": raw_ai_json,
-        "model": config.selected_ai_model,
+        "model": actual_model,
     }
     if nearest_sensor_log and nearest_sensor_log.get("id") is not None:
         payload["sensor_log_id"] = nearest_sensor_log["id"]
@@ -463,6 +475,7 @@ def run_backfill(
                 device_id=config.device_id,
                 location_id=config.location_id,
                 observed_at=observed_at,
+                user_note=candidate.slack_text,
                 ai_vision_provider=config.ai_vision_provider,
                 openai_api_key=config.openai_api_key,
                 openai_model=config.openai_vision_model,

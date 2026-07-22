@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read the sensors connected to the secondary Raspberry Pi."""
 
+import json
 import os
 import signal
 import threading
@@ -10,13 +11,14 @@ from datetime import datetime
 import requests
 from dotenv import load_dotenv
 
+from alert_manager import record_transmission_failure, record_transmission_success
 from bh1750 import read_lux
 from care_log import send_recovery_care_log
 from ds18b20 import read_temperature
 from float_switch import FloatSwitchStateMonitor, read_triggered
+from outbox import enqueue, flush_outbox
 from slack_notifier import load_notification_state, process_notifications
 from vitality import calculate_basil_vitality
-
 
 load_dotenv()
 
@@ -149,10 +151,11 @@ def build_payload(float_triggered=None):
         ),
         "vitality_score": vitality_score,
         "message": message,
+        "created_at": observed_at.isoformat(),
     }
 
 
-def send_to_supabase(payload):
+def send_single_payload_raw(payload):
     if not SUPABASE_ENDPOINT or not SUPABASE_SENSOR_KEY:
         raise RuntimeError("SUPABASE_URL or SUPABASE_SENSOR_KEY is not set")
 
@@ -168,20 +171,48 @@ def send_to_supabase(payload):
         timeout=10,
     )
     if not response.ok:
+        err_msg = f"HTTP {response.status_code} {response.text[:200]}"
+        raise RuntimeError(err_msg)
+    return True
+
+
+def send_to_supabase_with_outbox(payload):
+    # Enqueue payload locally to outbox queue first
+    enqueue(payload)
+
+    last_error = None
+    try:
+        synced_count, failed_count = flush_outbox(send_single_payload_raw)
+    except Exception as exc:
+        synced_count = 0
+        failed_count = 1
+        last_error = str(exc)
+
+    if synced_count > 0:
+        resent = max(0, synced_count - 1)
         print(
-            f"Supabase error status={response.status_code} body={response.text}",
+            "sent: "
+            f"device={payload['device_id']}, "
+            f"solution_temperature={payload['solution_temperature']}, "
+            f"light={payload['light_lux']}lx({payload['light_status']}), "
+            f"float={payload['float_switch_state']}, "
+            f"status=201 (synced={synced_count})",
             flush=True,
         )
-    response.raise_for_status()
-    print(
-        "sent: "
-        f"device={payload['device_id']}, "
-        f"solution_temperature={payload['solution_temperature']}, "
-        f"light={payload['light_lux']}lx({payload['light_status']}), "
-        f"float={payload['float_switch_state']}, "
-        f"status={response.status_code}",
-        flush=True,
-    )
+        record_transmission_success(DEVICE_ID, resent_count=resent)
+    else:
+        # Failure: output full payload to journalctl safely
+        payload_str = json.dumps(payload, ensure_ascii=False, indent=2)
+        err_desc = last_error or "Transmission failed"
+        print(
+            f"POST failed ({err_desc})\n"
+            f"payload={payload_str}",
+            flush=True,
+        )
+        record_transmission_failure(DEVICE_ID, f"POST failed: {err_desc}")
+
+
+send_to_supabase = send_to_supabase_with_outbox
 
 
 def seconds_until_next_send():

@@ -1,8 +1,8 @@
 [Unit]
-Description=Run Plant IoT Supabase health check daily
+Description=Run Plant IoT Supabase health check and heartbeat monitoring every 10 minutes
 
 [Timer]
-OnCalendar=*-*-* 03:17:00
+OnCalendar=*:0/10
 Persistent=true
 Unit=plant-supabase-health.service
 

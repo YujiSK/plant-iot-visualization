@@ -216,7 +216,10 @@ class AiObservationTest(unittest.TestCase):
             http_client=http,
         )
 
-        self.assertEqual(http.posts[0][0], GEMINI_INTERACTIONS_URL)
+        self.assertEqual(
+            http.posts[0][0],
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent",
+        )
         self.assertEqual(result["growth_stage"], "true_leaf_1")
         self.assertEqual(result["true_leaf_pair_count"], 1)
 

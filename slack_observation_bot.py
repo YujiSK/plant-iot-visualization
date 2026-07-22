@@ -161,6 +161,7 @@ def extract_observation_photo(
         "channel": event.get("channel"),
         "user": event.get("user"),
         "ts": event.get("ts"),
+        "text": event.get("text") or "",
         "file": image_file,
     }
 
@@ -410,6 +411,10 @@ def build_note(
         f"slack_channel_id={observation.get('channel')}",
         f"slack_user_id={observation.get('user')}",
         f"slack_ts={observation.get('ts')}",
+        (
+            "slack_text_json="
+            + json.dumps(observation.get("text") or "", ensure_ascii=False)
+        ) if observation.get("text") else None,
         f"slack_file_id={slack_file.get('id')}",
         f"slack_file_name={slack_file.get('name')}",
         f"slack_file_mimetype={slack_file.get('mimetype')}",
@@ -509,9 +514,11 @@ def build_plant_observation_payload(
     image_identity: ImageIdentity | None = None,
 ) -> dict[str, Any]:
     observed_at = slack_ts_to_jst(observation["ts"])
+    actual_model = ai_observation.get("model") or config.selected_ai_model
     raw_ai_json = {
         **ai_observation,
         **image_identity_metadata(observation, config, image_identity),
+        "model": actual_model,
     }
     payload = {
         "observed_at": observed_at.astimezone(timezone.utc).isoformat(),
@@ -536,7 +543,7 @@ def build_plant_observation_payload(
         "summary": ai_observation.get("summary"),
         "next_action": ai_observation.get("next_action"),
         "raw_ai_json": raw_ai_json,
-        "model": config.selected_ai_model,
+        "model": actual_model,
     }
     return {key: value for key, value in payload.items() if value is not None}
 
@@ -796,6 +803,7 @@ def process_slack_event(
             device_id=config.device_id,
             location_id=config.location_id,
             observed_at=observed_at,
+            user_note=observation.get("text"),
             ai_vision_provider=config.ai_vision_provider,
             openai_api_key=config.openai_api_key,
             openai_model=config.openai_vision_model,

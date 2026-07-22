@@ -249,6 +249,94 @@ The static UI only needs anonymous read access. Browser writes should stay disab
 
 Do not reuse `SUPABASE_KEY` for sensor writes. `SUPABASE_KEY` is published in `docs/config.js` for the browser and should only be able to read rows. `SUPABASE_SENSOR_KEY` must stay only in `.env` on the Raspberry Pi.
 
+## 信頼性・運用監視 (Reliability & Operational Monitoring)
+
+本システムは、Silent Failure（送信失敗に誰も気づかない状態）を完全に防ぐため、以下の堅牢なアーキテクチャを備えています。
+
+### 1. 障害時データフロー (SQLite Outbox パターン)
+
+センサーデータの送信処理は **Outbox パターン** に基づいて動作します。
+
+1. **ローカル永続化**: センサーデータ取得後、Supabase への送信前に必ずローカル SQLite (`data.db` 内の `outbox_queue` テーブル) へ `pending` 状態として保存します。
+2. **自動再送 (Backfill)**: サービス起動時および毎回の送信サイクル時に、未送信 (`pending` / `failed`) のレコードを自動的に再送します。
+3. **重複登録防止**: 送信が成功したレコードのみ `synced` へ更新します。レコードには元の取得時刻 (`created_at`) が保持されるため、再送時もデータ時刻が正確に保たれます。
+4. **journalctl への安全なペイロード出力**: 通信障害や 401 API Key 破損等で送信失敗した場合、API Key や Secret 情報を除外した安全な JSON ペイロード全体を `journalctl` に出力します。
+
+```mermaid
+flowchart TD
+    Sensor["Sensor Read Cycle\n(5-min interval)"] --> Outbox["Save to Local SQLite\noutbox_queue (pending)"]
+    Outbox --> Flush["Flush Outbox Queue"]
+    Flush --> Post{{"POST /rest/v1/sensor_logs"}}
+
+    Post -- "Success (201)" --> MarkSynced["Update outbox status to synced"]
+    MarkSynced --> CheckAlert{"Active Alert?"}
+    CheckAlert -- "Yes" --> RecAlert["Send Recovery Notification\n(Slack & LINE)"]
+    RecAlert --> ResetState["Reset Failure Counter"]
+    CheckAlert -- "No" --> Done["Done"]
+
+    Post -- "Failure\n(401/403/5xx/Timeout/Network)" --> LogPayload["Log Full Payload to journalctl\n(No secrets)"]
+    LogPayload --> MarkFailed["Update outbox status to failed\n(Preserved for retry)"]
+    MarkFailed --> IncFail["Increment Consecutive Failure Count"]
+    IncFail --> Threshold{"Failures >= 3?"}
+    Threshold -- "Yes & Cooldown Met" --> SendAlert["Send Dual Alert\n(Slack & LINE)"]
+    Threshold -- "No" --> Done
+```
+
+### 2. 運用監視 (Heartbeat & システム自己監視)
+
+10 分ごとに `plant-supabase-health.timer` 経由で `supabase_health_check.py` が実行され、以下の項目を多層監視します。
+
+* **Heartbeat 監視**:
+  * Supabase 上の `sensor_logs` テーブルの最新 `created_at` を確認
+  * 15 分以内: **OK**
+  * 30 分以上更新なし: **Warning** (Slack & LINE 通知)
+  * 60 分以上更新なし: **Critical** (Slack & LINE 通知)
+* **Raspberry Pi 自己監視**:
+  * systemd サービス状態 (`plant-sensor-raspberrypi2.service`)
+  * ディスク容量使用率 (90% 以上で Warning/Critical)
+  * CPU 温度 (80°C 以上で Warning)
+  * メモリ使用率 (90% 以上で Warning)
+
+```mermaid
+flowchart TD
+    Timer["Systemd Timer\n(Every 10 mins)"] --> HealthCheck["supabase_health_check.py"]
+    HealthCheck --> CheckAPI["Check Supabase REST API"]
+    HealthCheck --> CheckHB["Check Heartbeat\nMAX(created_at)"]
+    HealthCheck --> CheckSys["Check Raspberry Pi Hardware\n(Service, Disk, CPU Temp, Mem)"]
+
+    CheckHB --> HBVal{"Age > 30 mins?"}
+    HBVal -- "Yes (Warning/Critical)" --> HBAlert["Send Heartbeat Alert\n(Slack & LINE)"]
+    HBVal -- "No" --> SystemVal{"Disk >= 90% or Temp >= 80C\nor Service Stopped?"}
+
+    SystemVal -- "Yes" --> SysAlert["Send System Alert\n(Slack & LINE)"]
+    SystemVal -- "No" --> OK["Status Normal"]
+```
+
+### 3. 通知仕様 (Slack + LINE 二重通知)
+
+* **通知先**: Slack Webhook (`SLACK_WEBHOOK_URL`) および LINE Messaging API (`LINE_CHANNEL_ACCESS_TOKEN`, `LINE_TO_ID`) の両方へ同一のアラートを送信
+* **発動条件**: HTTP 401/403/5xx, Timeout, Connection Error, DNS Error, SSL Error が **3 回連続** で発生した場合
+* **アラートスパム防止**: アラート送信後は 1 時間のクールダウン期間を設け、エラー継続中のスパム通知を防止
+* **復旧通知**: 障害発生後に正常送信へ復帰した際、**復旧通知 (`✅ Plant IoT Recovered`)** を Slack と LINE へ 1 回送信（障害継続時間および再送件数を明記）
+
+### 4. 障害復旧手順
+
+1. **障害通知を受信した場合**:
+   * 通知メッセージ内の `Action recommended` を確認します。
+   * 例: `HTTP 401 Invalid API key` の場合は `.env` の `SUPABASE_SENSOR_KEY` を確認・更新します。
+2. **サービスの再起動**:
+   ```bash
+   sudo systemctl restart plant-sensor-raspberrypi2.service
+   ```
+3. **ローカル未送信キューの自動復旧確認**:
+   * サービス起動時および送信サイクル時に SQLite outbox (`data.db`) から自動再送されます。
+   * 手動確認コマンド:
+     ```bash
+     python3 -c "import outbox; print('Pending outbox count:', outbox.count_pending())"
+     ```
+4. **復旧通知の確認**:
+   * 正常に Supabase への INSERT が再開されると、自動的に Slack および LINE へ復旧通知が送信されます。
+
 ## Slack observation logs
 
 `slack_observation_bot.py` records image posts in `#plant-observation` as
