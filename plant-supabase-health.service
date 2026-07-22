@@ -1,0 +1,11 @@
+[Unit]
+Description=Plant IoT Supabase health check
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/plant-iot
+EnvironmentFile=/home/pi/plant-iot/.env
+ExecStart=/home/pi/plant-iot/.venv/bin/python /home/pi/plant-iot/supabase_health_check.py
