@@ -1,0 +1,411 @@
+{
+  "snapshot_rows_total": 43280,
+  "series_counts": {
+    "raspberrypi2|raspberrypi2-ds18b20-bh1750-float": 35407,
+    "None|sensor": 2767,
+    "None|dht11-mcp3204": 2683,
+    "raspi|raspi-dht11-ds18b20-mcp3208": 2139,
+    "None|dht11-ds18b20-mcp3208": 283,
+    "raspberrypi2|sensor": 1
+  },
+  "main_count": 35407,
+  "main_first": "2026-06-13T01:22:21.972648+09:00",
+  "main_last": "2026-10-13T10:35:00.669265+09:00",
+  "field_quality_rows": {
+    "solution_temperature": {
+      "null": 11369,
+      "null_pct": 32.11
+    },
+    "light_lux": {
+      "null": 11371,
+      "null_pct": 32.12
+    },
+    "float_switch_state": {
+      "null": 0,
+      "null_pct": 0.0
+    },
+    "vitality_score": {
+      "null": 0,
+      "null_pct": 0.0
+    },
+    "temp_85C_rows": 4,
+    "temp_valid_rows": 24034,
+    "lux_valid_rows": 24036,
+    "float_valid_rows": 35407,
+    "all3_valid_rows": 24031
+  },
+  "null_onset": {
+    "last_nonnull_temp": "2026-09-09T15:09:59.462379+09:00",
+    "last_nonnull_lux": "2026-09-09T15:09:59.462379+09:00",
+    "rows_after_last_temp": 11368,
+    "rows_after_with_temp": 0,
+    "rows_after_with_lux": 0,
+    "rows_after_with_float": 11368,
+    "vitality_after_counter": {
+      "100": 11367,
+      "0": 1
+    },
+    "message_after_counter": {
+      "安定しています": 11367,
+      "水位低下を検出しました。根への給水を最優先で確認してください": 1
+    },
+    "rows_around": [
+      {
+        "id": 31912,
+        "solution_temperature": 27.812,
+        "light_lux": 62.5,
+        "float_switch_state": "low_water",
+        "vitality_score": 25,
+        "t": "2026-09-09T14:54:59.270514+09:00"
+      },
+      {
+        "id": 31913,
+        "solution_temperature": 27.75,
+        "light_lux": 89.2,
+        "float_switch_state": "low_water",
+        "vitality_score": 25,
+        "t": "2026-09-09T14:59:59.590061+09:00"
+      },
+      {
+        "id": 31914,
+        "solution_temperature": 27.75,
+        "light_lux": 74.2,
+        "float_switch_state": "low_water",
+        "vitality_score": 25,
+        "t": "2026-09-09T15:04:59.334606+09:00"
+      },
+      {
+        "id": 31915,
+        "solution_temperature": 27.625,
+        "light_lux": 35.8,
+        "float_switch_state": "low_water",
+        "vitality_score": 25,
+        "t": "2026-09-09T15:09:59.462379+09:00"
+      },
+      {
+        "id": 31916,
+        "solution_temperature": null,
+        "light_lux": null,
+        "float_switch_state": "low_water",
+        "vitality_score": 0,
+        "t": "2026-09-09T15:10:56.959434+09:00"
+      }
+    ]
+  },
+  "monthly": {
+    "2026-06": {
+      "rows": 5502,
+      "temp_valid": 5501,
+      "lux_valid": 5499,
+      "float_valid": 5502,
+      "all3_valid": 5498
+    },
+    "2026-07": {
+      "rows": 6569,
+      "temp_valid": 6569,
+      "lux_valid": 6569,
+      "float_valid": 6569,
+      "all3_valid": 6569
+    },
+    "2026-08": {
+      "rows": 8991,
+      "temp_valid": 8987,
+      "lux_valid": 8991,
+      "float_valid": 8991,
+      "all3_valid": 8987
+    },
+    "2026-09": {
+      "rows": 10171,
+      "temp_valid": 2977,
+      "lux_valid": 2977,
+      "float_valid": 10171,
+      "all3_valid": 2977
+    },
+    "2026-10": {
+      "rows": 4174,
+      "temp_valid": 0,
+      "lux_valid": 0,
+      "float_valid": 4174,
+      "all3_valid": 0
+    }
+  },
+  "daily_summary": {
+    "days": 123,
+    "days_A_ge_99pct": 100,
+    "days_A_zero": 13,
+    "days_all3_ge_99pct": 67
+  },
+  "coverage": {
+    "full_record_span [6/13 01:20,10/13 10:40)": {
+      "start": "2026-06-13T01:20:00+09:00",
+      "end": "2026-10-13T10:40:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 35407,
+      "expected_slots": 35248,
+      "A_record_slots": 30530,
+      "A_record_pct": 86.61,
+      "B_temp_valid_slots": 20806,
+      "B_temp_valid_pct": 59.03,
+      "B_lux_valid_slots": 20805,
+      "B_lux_valid_pct": 59.02,
+      "B_float_valid_slots": 30530,
+      "B_float_valid_pct": 86.61,
+      "B_all3_valid_slots": 20804,
+      "B_all3_valid_pct": 59.02
+    },
+    "user_preaccident [7/22 00:00,8/2 19:15)": {
+      "start": "2026-07-22T00:00:00+09:00",
+      "end": "2026-08-02T19:15:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 3794,
+      "expected_slots": 3399,
+      "A_record_slots": 3244,
+      "A_record_pct": 95.44,
+      "B_temp_valid_slots": 3244,
+      "B_temp_valid_pct": 95.44,
+      "B_lux_valid_slots": 3244,
+      "B_lux_valid_pct": 95.44,
+      "B_float_valid_slots": 3244,
+      "B_float_valid_pct": 95.44,
+      "B_all3_valid_slots": 3244,
+      "B_all3_valid_pct": 95.44
+    },
+    "formal_post_recovery [7/22 13:05,8/2 19:15] inclusive": {
+      "start": "2026-07-22T13:05:00+09:00",
+      "end": "2026-08-02T19:15:00+09:00",
+      "inclusive_end": true,
+      "rows_mapped": 3784,
+      "expected_slots": 3243,
+      "A_record_slots": 3240,
+      "A_record_pct": 99.91,
+      "B_temp_valid_slots": 3240,
+      "B_temp_valid_pct": 99.91,
+      "B_lux_valid_slots": 3240,
+      "B_lux_valid_pct": 99.91,
+      "B_float_valid_slots": 3240,
+      "B_float_valid_pct": 99.91,
+      "B_all3_valid_slots": 3240,
+      "B_all3_valid_pct": 99.91
+    },
+    "P1 initial [6/13 01:20,7/11 15:45)": {
+      "start": "2026-06-13T01:20:00+09:00",
+      "end": "2026-07-11T15:45:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 8870,
+      "expected_slots": 8237,
+      "A_record_slots": 8076,
+      "A_record_pct": 98.05,
+      "B_temp_valid_slots": 8075,
+      "B_temp_valid_pct": 98.03,
+      "B_lux_valid_slots": 8074,
+      "B_lux_valid_pct": 98.02,
+      "B_float_valid_slots": 8076,
+      "B_float_valid_pct": 98.05,
+      "B_all3_valid_slots": 8073,
+      "B_all3_valid_pct": 98.01
+    },
+    "P3 post-accident [8/7 17:05,9/9 15:10)": {
+      "start": "2026-08-07T17:05:00+09:00",
+      "end": "2026-09-09T15:10:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 11367,
+      "expected_slots": 9481,
+      "A_record_slots": 9481,
+      "A_record_pct": 100.0,
+      "B_temp_valid_slots": 9481,
+      "B_temp_valid_pct": 100.0,
+      "B_lux_valid_slots": 9481,
+      "B_lux_valid_pct": 100.0,
+      "B_float_valid_slots": 9481,
+      "B_float_valid_pct": 100.0,
+      "B_all3_valid_slots": 9481,
+      "B_all3_valid_pct": 100.0
+    },
+    "P4 sensors-null [9/9 15:10,10/13 10:40)": {
+      "start": "2026-09-09T15:10:00+09:00",
+      "end": "2026-10-13T10:40:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 11369,
+      "expected_slots": 9738,
+      "A_record_slots": 9724,
+      "A_record_pct": 99.86,
+      "B_temp_valid_slots": 1,
+      "B_temp_valid_pct": 0.01,
+      "B_lux_valid_slots": 1,
+      "B_lux_valid_pct": 0.01,
+      "B_float_valid_slots": 9724,
+      "B_float_valid_pct": 99.86,
+      "B_all3_valid_slots": 1,
+      "B_all3_valid_pct": 0.01
+    },
+    "month 2026-06": {
+      "start": "2026-06-13T01:20:00+09:00",
+      "end": "2026-07-01T00:00:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 5502,
+      "expected_slots": 5168,
+      "A_record_slots": 5007,
+      "A_record_pct": 96.88,
+      "B_temp_valid_slots": 5006,
+      "B_temp_valid_pct": 96.87,
+      "B_lux_valid_slots": 5005,
+      "B_lux_valid_pct": 96.85,
+      "B_float_valid_slots": 5007,
+      "B_float_valid_pct": 96.88,
+      "B_all3_valid_slots": 5004,
+      "B_all3_valid_pct": 96.83
+    },
+    "month 2026-07": {
+      "start": "2026-07-01T00:00:00+09:00",
+      "end": "2026-08-01T00:00:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 6568,
+      "expected_slots": 8928,
+      "A_record_slots": 5794,
+      "A_record_pct": 64.9,
+      "B_temp_valid_slots": 5794,
+      "B_temp_valid_pct": 64.9,
+      "B_lux_valid_slots": 5794,
+      "B_lux_valid_pct": 64.9,
+      "B_float_valid_slots": 5794,
+      "B_float_valid_pct": 64.9,
+      "B_all3_valid_slots": 5794,
+      "B_all3_valid_pct": 64.9
+    },
+    "month 2026-08": {
+      "start": "2026-08-01T00:00:00+09:00",
+      "end": "2026-09-01T00:00:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 8991,
+      "expected_slots": 8928,
+      "A_record_slots": 7519,
+      "A_record_pct": 84.22,
+      "B_temp_valid_slots": 7519,
+      "B_temp_valid_pct": 84.22,
+      "B_lux_valid_slots": 7519,
+      "B_lux_valid_pct": 84.22,
+      "B_float_valid_slots": 7519,
+      "B_float_valid_pct": 84.22,
+      "B_all3_valid_slots": 7519,
+      "B_all3_valid_pct": 84.22
+    },
+    "month 2026-09": {
+      "start": "2026-09-01T00:00:00+09:00",
+      "end": "2026-10-01T00:00:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 10171,
+      "expected_slots": 8640,
+      "A_record_slots": 8629,
+      "A_record_pct": 99.87,
+      "B_temp_valid_slots": 2487,
+      "B_temp_valid_pct": 28.78,
+      "B_lux_valid_slots": 2487,
+      "B_lux_valid_pct": 28.78,
+      "B_float_valid_slots": 8629,
+      "B_float_valid_pct": 99.87,
+      "B_all3_valid_slots": 2487,
+      "B_all3_valid_pct": 28.78
+    },
+    "month 2026-10": {
+      "start": "2026-10-01T00:00:00+09:00",
+      "end": "2026-10-13T10:40:00+09:00",
+      "inclusive_end": false,
+      "rows_mapped": 4175,
+      "expected_slots": 3584,
+      "A_record_slots": 3581,
+      "A_record_pct": 99.92,
+      "B_temp_valid_slots": 0,
+      "B_temp_valid_pct": 0.0,
+      "B_lux_valid_slots": 0,
+      "B_lux_valid_pct": 0.0,
+      "B_float_valid_slots": 3581,
+      "B_float_valid_pct": 99.92,
+      "B_all3_valid_slots": 0,
+      "B_all3_valid_pct": 0.0
+    }
+  },
+  "intervals_s": {
+    "n": 35406,
+    "median": 299.52,
+    "p05": 2.322,
+    "p95": 300.651,
+    "lt60": 4861,
+    "gt600": 10
+  },
+  "top_gaps": [
+    {
+      "from": "2026-07-11T15:40:00.370500+09:00",
+      "to": "2026-07-22T12:39:07.554533+09:00",
+      "seconds": 939547.184,
+      "hours": 260.99
+    },
+    {
+      "from": "2026-08-04T10:49:59.450812+09:00",
+      "to": "2026-08-07T17:02:43.522931+09:00",
+      "seconds": 281564.072,
+      "hours": 78.21
+    },
+    {
+      "from": "2026-08-02T19:16:39.296990+09:00",
+      "to": "2026-08-04T10:35:15.481819+09:00",
+      "seconds": 141516.185,
+      "hours": 39.31
+    },
+    {
+      "from": "2026-06-15T19:45:00.505269+09:00",
+      "to": "2026-06-16T07:26:00.777475+09:00",
+      "seconds": 42060.272,
+      "hours": 11.68
+    },
+    {
+      "from": "2026-06-13T04:35:01.915103+09:00",
+      "to": "2026-06-13T06:30:47.343534+09:00",
+      "seconds": 6945.428,
+      "hours": 1.93
+    },
+    {
+      "from": "2026-09-09T15:10:56.959434+09:00",
+      "to": "2026-09-09T15:42:06.768661+09:00",
+      "seconds": 1869.809,
+      "hours": 0.52
+    },
+    {
+      "from": "2026-09-09T15:44:05.604127+09:00",
+      "to": "2026-09-09T16:13:07.558674+09:00",
+      "seconds": 1741.955,
+      "hours": 0.48
+    },
+    {
+      "from": "2026-10-13T10:14:14.528775+09:00",
+      "to": "2026-10-13T10:32:37.179917+09:00",
+      "seconds": 1102.651,
+      "hours": 0.31
+    }
+  ],
+  "C_outbox": {
+    "note": "outbox created_at is SQLite CURRENT_TIMESTAMP (UTC, 1 s resolution); synced_at is ISO UTC",
+    "rows": 10117,
+    "status": {
+      "synced": 10117
+    },
+    "payload_window_utc": [
+      "2026-09-13T01:35:00.814997+00:00",
+      "2026-10-13T01:35:00.669265+00:00"
+    ],
+    "rows_retried": 14,
+    "payload_temp_and_lux_null": 10117,
+    "matched_in_cloud_by_exact_timestamp": 10117,
+    "cloud_rows_in_same_window": 10118,
+    "latency_s": {
+      "n": 10117,
+      "median": 1.299,
+      "p95": 2.062,
+      "p99": 2.383,
+      "max": 296.171,
+      "le_5s": 10095,
+      "le_60s": 10103,
+      "gt_60s": 14,
+      "le_5s_pct": 99.78
+    }
+  }
+}
