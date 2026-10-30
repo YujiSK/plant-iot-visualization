@@ -1,0 +1,589 @@
+{
+  "population_total_rows": 43280,
+  "series": [
+    {
+      "device_id": null,
+      "source": "sensor",
+      "rows": 2767,
+      "first": "2026-04-26T02:57:44+09:00",
+      "last": "2026-05-25T21:42:40+09:00"
+    },
+    {
+      "device_id": null,
+      "source": "dht11-mcp3204",
+      "rows": 2683,
+      "first": "2026-06-02T04:10:14+09:00",
+      "last": "2026-06-11T12:05:03+09:00"
+    },
+    {
+      "device_id": null,
+      "source": "dht11-ds18b20-mcp3208",
+      "rows": 283,
+      "first": "2026-06-12T01:42:47+09:00",
+      "last": "2026-06-13T01:10:02+09:00"
+    },
+    {
+      "device_id": "raspi",
+      "source": "raspi-dht11-ds18b20-mcp3208",
+      "rows": 2139,
+      "first": "2026-06-13T01:15:02+09:00",
+      "last": "2026-06-20T11:25:01+09:00"
+    },
+    {
+      "device_id": "raspberrypi2",
+      "source": "raspberrypi2-ds18b20-bh1750-float",
+      "rows": 35407,
+      "first": "2026-06-13T01:22:21+09:00",
+      "last": "2026-10-13T10:35:00+09:00"
+    },
+    {
+      "device_id": "raspberrypi2",
+      "source": "sensor",
+      "rows": 1,
+      "first": "2026-07-22T12:51:57+09:00",
+      "last": "2026-07-22T12:51:57+09:00"
+    }
+  ],
+  "main_rows": 35407,
+  "main_first": "2026-06-13T01:22:21+09:00",
+  "main_last": "2026-10-13T10:35:00+09:00",
+  "monthly_rows": [
+    {
+      "month": "2026-06",
+      "rows": 5502,
+      "temp_null_pct": 0.02,
+      "lux_null_pct": 0.05,
+      "float_null_pct": 0.0,
+      "temp_85_rows": 0
+    },
+    {
+      "month": "2026-07",
+      "rows": 6569,
+      "temp_null_pct": 0.0,
+      "lux_null_pct": 0.0,
+      "float_null_pct": 0.0,
+      "temp_85_rows": 0
+    },
+    {
+      "month": "2026-08",
+      "rows": 8991,
+      "temp_null_pct": 0.0,
+      "lux_null_pct": 0.0,
+      "float_null_pct": 0.0,
+      "temp_85_rows": 4
+    },
+    {
+      "month": "2026-09",
+      "rows": 10171,
+      "temp_null_pct": 70.73,
+      "lux_null_pct": 70.73,
+      "float_null_pct": 0.0,
+      "temp_85_rows": 0
+    },
+    {
+      "month": "2026-10",
+      "rows": 4174,
+      "temp_null_pct": 100.0,
+      "lux_null_pct": 100.0,
+      "float_null_pct": 0.0,
+      "temp_85_rows": 0
+    }
+  ],
+  "row_level_overall": {
+    "temperature": {
+      "null_rows": 11369,
+      "null_pct": 32.11
+    },
+    "light_lux": {
+      "null_rows": 11371,
+      "null_pct": 32.12
+    },
+    "float": {
+      "null_rows": 0,
+      "null_pct": 0.0
+    }
+  },
+  "temp_out_of_screen_rows": 4,
+  "temperature_last_non_null": "2026-09-09T15:09:59+09:00",
+  "light_lux_last_non_null": "2026-09-09T15:09:59+09:00",
+  "windows": [
+    {
+      "window": "全記録範囲",
+      "start": "2026-06-13T01:20:00+09:00",
+      "end_exclusive": "2026-10-13T10:40:00+09:00",
+      "note": "主要系列の最初～最後を覆う5分枠",
+      "expected_slots": 35248,
+      "A_record_slots": 30530,
+      "A_record_pct": 86.61,
+      "raw_rows_in_window": 35407,
+      "B_temperature_valid_slots": 20806,
+      "B_temperature_valid_pct": 59.03,
+      "B_light_lux_valid_slots": 20805,
+      "B_light_lux_valid_pct": 59.02,
+      "B_float_valid_slots": 30530,
+      "B_float_valid_pct": 86.61,
+      "B_all3_valid_slots": 20804,
+      "B_all3_valid_pct": 59.02
+    },
+    {
+      "window": "指定区間(事故前・半開区間)",
+      "start": "2026-07-22T00:00:00+09:00",
+      "end_exclusive": "2026-08-02T19:15:00+09:00",
+      "note": "先行監査95.44%の再現",
+      "expected_slots": 3399,
+      "A_record_slots": 3244,
+      "A_record_pct": 95.44,
+      "raw_rows_in_window": 3794,
+      "B_temperature_valid_slots": 3244,
+      "B_temperature_valid_pct": 95.44,
+      "B_light_lux_valid_slots": 3244,
+      "B_light_lux_valid_pct": 95.44,
+      "B_float_valid_slots": 3244,
+      "B_float_valid_pct": 95.44,
+      "B_all3_valid_slots": 3244,
+      "B_all3_valid_pct": 95.44
+    },
+    {
+      "window": "復旧後評価区間(端点含む)",
+      "start": "2026-07-22T13:05:00+09:00",
+      "end_exclusive": "2026-08-02T19:20:00+09:00",
+      "note": "7/22 13:05～8/2 19:15の期待時刻を両端含む=3,243枠",
+      "expected_slots": 3243,
+      "A_record_slots": 3240,
+      "A_record_pct": 99.91,
+      "raw_rows_in_window": 3784,
+      "B_temperature_valid_slots": 3240,
+      "B_temperature_valid_pct": 99.91,
+      "B_light_lux_valid_slots": 3240,
+      "B_light_lux_valid_pct": 99.91,
+      "B_float_valid_slots": 3240,
+      "B_float_valid_pct": 99.91,
+      "B_all3_valid_slots": 3240,
+      "B_all3_valid_pct": 99.91
+    },
+    {
+      "window": "P1 設置～認証障害前",
+      "start": "2026-06-13T01:20:00+09:00",
+      "end_exclusive": "2026-07-11T15:45:00+09:00",
+      "note": "",
+      "expected_slots": 8237,
+      "A_record_slots": 8076,
+      "A_record_pct": 98.05,
+      "raw_rows_in_window": 8870,
+      "B_temperature_valid_slots": 8075,
+      "B_temperature_valid_pct": 98.03,
+      "B_light_lux_valid_slots": 8074,
+      "B_light_lux_valid_pct": 98.02,
+      "B_float_valid_slots": 8076,
+      "B_float_valid_pct": 98.05,
+      "B_all3_valid_slots": 8073,
+      "B_all3_valid_pct": 98.01
+    },
+    {
+      "window": "P2 認証障害期",
+      "start": "2026-07-11T15:45:00+09:00",
+      "end_exclusive": "2026-07-22T13:05:00+09:00",
+      "note": "",
+      "expected_slots": 3136,
+      "A_record_slots": 5,
+      "A_record_pct": 0.16,
+      "raw_rows_in_window": 12,
+      "B_temperature_valid_slots": 5,
+      "B_temperature_valid_pct": 0.16,
+      "B_light_lux_valid_slots": 5,
+      "B_light_lux_valid_pct": 0.16,
+      "B_float_valid_slots": 5,
+      "B_float_valid_pct": 0.16,
+      "B_all3_valid_slots": 5,
+      "B_all3_valid_pct": 0.16
+    },
+    {
+      "window": "P3 復旧後～転倒前",
+      "start": "2026-07-22T13:05:00+09:00",
+      "end_exclusive": "2026-08-02T19:20:00+09:00",
+      "note": "",
+      "expected_slots": 3243,
+      "A_record_slots": 3240,
+      "A_record_pct": 99.91,
+      "raw_rows_in_window": 3784,
+      "B_temperature_valid_slots": 3240,
+      "B_temperature_valid_pct": 99.91,
+      "B_light_lux_valid_slots": 3240,
+      "B_light_lux_valid_pct": 99.91,
+      "B_float_valid_slots": 3240,
+      "B_float_valid_pct": 99.91,
+      "B_all3_valid_slots": 3240,
+      "B_all3_valid_pct": 99.91
+    },
+    {
+      "window": "P4 転倒後～記録再開",
+      "start": "2026-08-02T19:20:00+09:00",
+      "end_exclusive": "2026-08-07T17:05:00+09:00",
+      "note": "",
+      "expected_slots": 1413,
+      "A_record_slots": 4,
+      "A_record_pct": 0.28,
+      "raw_rows_in_window": 7,
+      "B_temperature_valid_slots": 4,
+      "B_temperature_valid_pct": 0.28,
+      "B_light_lux_valid_slots": 4,
+      "B_light_lux_valid_pct": 0.28,
+      "B_float_valid_slots": 4,
+      "B_float_valid_pct": 0.28,
+      "B_all3_valid_slots": 4,
+      "B_all3_valid_pct": 0.28
+    },
+    {
+      "window": "P5 再開～9/9欠損発生前",
+      "start": "2026-08-07T17:05:00+09:00",
+      "end_exclusive": "2026-09-09T15:10:00+09:00",
+      "note": "",
+      "expected_slots": 9481,
+      "A_record_slots": 9481,
+      "A_record_pct": 100.0,
+      "raw_rows_in_window": 11366,
+      "B_temperature_valid_slots": 9481,
+      "B_temperature_valid_pct": 100.0,
+      "B_light_lux_valid_slots": 9481,
+      "B_light_lux_valid_pct": 100.0,
+      "B_float_valid_slots": 9481,
+      "B_float_valid_pct": 100.0,
+      "B_all3_valid_slots": 9481,
+      "B_all3_valid_pct": 100.0
+    },
+    {
+      "window": "P6 9/9欠損発生後",
+      "start": "2026-09-09T15:10:00+09:00",
+      "end_exclusive": "2026-10-13T10:40:00+09:00",
+      "note": "",
+      "expected_slots": 9738,
+      "A_record_slots": 9724,
+      "A_record_pct": 99.86,
+      "raw_rows_in_window": 11368,
+      "B_temperature_valid_slots": 1,
+      "B_temperature_valid_pct": 0.01,
+      "B_light_lux_valid_slots": 1,
+      "B_light_lux_valid_pct": 0.01,
+      "B_float_valid_slots": 9724,
+      "B_float_valid_pct": 99.86,
+      "B_all3_valid_slots": 1,
+      "B_all3_valid_pct": 0.01
+    }
+  ],
+  "days_total": 123,
+  "days_A_ge_99pct": 100,
+  "days_A_zero": 13,
+  "days_all3_ge_99pct": 67,
+  "monthly_slot_coverage": [
+    {
+      "month": "2026-06",
+      "expected_slots": 5168,
+      "A_pct": 96.88,
+      "B_temp_pct": 96.87,
+      "B_lux_pct": 96.85,
+      "B_float_pct": 96.88,
+      "B_all3_pct": 96.83
+    },
+    {
+      "month": "2026-07",
+      "expected_slots": 8928,
+      "A_pct": 64.9,
+      "B_temp_pct": 64.9,
+      "B_lux_pct": 64.9,
+      "B_float_pct": 64.9,
+      "B_all3_pct": 64.9
+    },
+    {
+      "month": "2026-08",
+      "expected_slots": 8928,
+      "A_pct": 84.22,
+      "B_temp_pct": 84.22,
+      "B_lux_pct": 84.22,
+      "B_float_pct": 84.22,
+      "B_all3_pct": 84.22
+    },
+    {
+      "month": "2026-09",
+      "expected_slots": 8640,
+      "A_pct": 99.87,
+      "B_temp_pct": 28.78,
+      "B_lux_pct": 28.78,
+      "B_float_pct": 99.87,
+      "B_all3_pct": 28.78
+    },
+    {
+      "month": "2026-10",
+      "expected_slots": 3584,
+      "A_pct": 99.92,
+      "B_temp_pct": 0.0,
+      "B_lux_pct": 0.0,
+      "B_float_pct": 99.92,
+      "B_all3_pct": 0.0
+    }
+  ],
+  "top_gaps": [
+    {
+      "seconds": 939547.184,
+      "hours": 260.99,
+      "from": "2026-07-11T15:40:00+09:00",
+      "to": "2026-07-22T12:39:07+09:00"
+    },
+    {
+      "seconds": 281564.072,
+      "hours": 78.21,
+      "from": "2026-08-04T10:49:59+09:00",
+      "to": "2026-08-07T17:02:43+09:00"
+    },
+    {
+      "seconds": 141516.185,
+      "hours": 39.31,
+      "from": "2026-08-02T19:16:39+09:00",
+      "to": "2026-08-04T10:35:15+09:00"
+    },
+    {
+      "seconds": 42060.272,
+      "hours": 11.68,
+      "from": "2026-06-15T19:45:00+09:00",
+      "to": "2026-06-16T07:26:00+09:00"
+    },
+    {
+      "seconds": 6945.428,
+      "hours": 1.93,
+      "from": "2026-06-13T04:35:01+09:00",
+      "to": "2026-06-13T06:30:47+09:00"
+    },
+    {
+      "seconds": 1869.809,
+      "hours": 0.52,
+      "from": "2026-09-09T15:10:56+09:00",
+      "to": "2026-09-09T15:42:06+09:00"
+    },
+    {
+      "seconds": 1741.955,
+      "hours": 0.48,
+      "from": "2026-09-09T15:44:05+09:00",
+      "to": "2026-09-09T16:13:07+09:00"
+    },
+    {
+      "seconds": 1102.651,
+      "hours": 0.31,
+      "from": "2026-10-13T10:14:14+09:00",
+      "to": "2026-10-13T10:32:37+09:00"
+    }
+  ],
+  "intervals": {
+    "median_s": 299.52,
+    "lt60_count": 4861,
+    "gt600_count": 10
+  },
+  "sep9_transition_rows": [
+    {
+      "id": 31908,
+      "t": "2026-09-09T14:34:59+09:00",
+      "solution_temperature": 28.0,
+      "light_lux": 152.5,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31909,
+      "t": "2026-09-09T14:39:59+09:00",
+      "solution_temperature": 27.937,
+      "light_lux": 126.7,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31910,
+      "t": "2026-09-09T14:44:59+09:00",
+      "solution_temperature": 27.875,
+      "light_lux": 87.5,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31911,
+      "t": "2026-09-09T14:49:59+09:00",
+      "solution_temperature": 27.812,
+      "light_lux": 61.7,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31912,
+      "t": "2026-09-09T14:54:59+09:00",
+      "solution_temperature": 27.812,
+      "light_lux": 62.5,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31913,
+      "t": "2026-09-09T14:59:59+09:00",
+      "solution_temperature": 27.75,
+      "light_lux": 89.2,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31914,
+      "t": "2026-09-09T15:04:59+09:00",
+      "solution_temperature": 27.75,
+      "light_lux": 74.2,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31915,
+      "t": "2026-09-09T15:09:59+09:00",
+      "solution_temperature": 27.625,
+      "light_lux": 35.8,
+      "float": "low_water",
+      "vitality": 25
+    },
+    {
+      "id": 31916,
+      "t": "2026-09-09T15:10:56+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "low_water",
+      "vitality": 0
+    },
+    {
+      "id": 31917,
+      "t": "2026-09-09T15:42:06+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    },
+    {
+      "id": 31918,
+      "t": "2026-09-09T15:44:05+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    },
+    {
+      "id": 31919,
+      "t": "2026-09-09T16:13:07+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    },
+    {
+      "id": 31920,
+      "t": "2026-09-09T16:14:59+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    },
+    {
+      "id": 31921,
+      "t": "2026-09-09T16:19:59+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    },
+    {
+      "id": 31922,
+      "t": "2026-09-09T16:24:59+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    },
+    {
+      "id": 31923,
+      "t": "2026-09-09T16:29:59+09:00",
+      "solution_temperature": null,
+      "light_lux": null,
+      "float": "water_ok",
+      "vitality": 100
+    }
+  ],
+  "post_sep9": {
+    "rows": 11368,
+    "vitality_100_rows": 11367,
+    "vitality_values": [
+      0,
+      100
+    ],
+    "float_states": {
+      "low_water": 1,
+      "water_ok": 11367
+    }
+  },
+  "C_outbox": {
+    "rows": 10117,
+    "synced": 10117,
+    "measured_range": [
+      "2026-09-13T10:35:00+09:00",
+      "2026-10-13T10:35:00+09:00"
+    ],
+    "supabase_main_rows_same_range": 10118,
+    "latency_s": {
+      "min": 0.149,
+      "median": 0.924,
+      "p95": 1.365,
+      "p99": 1.791,
+      "max": 295.815
+    },
+    "within_10s": 10102,
+    "within_60s": 10103,
+    "within_300s": 10117,
+    "over_300s": 0,
+    "retried_rows": 14,
+    "retried_latencies_s": [
+      282.1,
+      290.9,
+      292.6,
+      292.8,
+      293.7,
+      293.8,
+      294.1,
+      294.3,
+      294.5,
+      294.7,
+      295.0,
+      295.4,
+      295.7,
+      295.8
+    ]
+  },
+  "care_logs": {
+    "rows": 29,
+    "kinds": {
+      "slack_photo": 19,
+      "float_recovery_auto": 7,
+      "manual_or_other": 2,
+      "test_record": 1
+    },
+    "with_sensor_log_id": 19,
+    "range": [
+      "2026-05-18T09:10:03+09:00",
+      "2026-09-09T15:41:26+09:00"
+    ]
+  },
+  "plant_observations": {
+    "rows": 7,
+    "with_sensor_log_id": 5,
+    "by_model": {
+      "gemini-3.5-flash": 5,
+      "gemini-3.1-flash-lite": 2
+    },
+    "registration_lag_hours": [
+      0.0,
+      0.0,
+      0.01,
+      0.01,
+      4.98,
+      100.1,
+      351.72
+    ]
+  }
+}
