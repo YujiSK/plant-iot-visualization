@@ -1,0 +1,458 @@
+{
+  "query": "SELECT * FROM adc_readings WHERE observed_at_utc <= '2026-10-30T08:10:00.543+00:00' ORDER BY observed_at_utc,id",
+  "schema": [
+    {
+      "name": "adc_readings",
+      "sql": "CREATE TABLE adc_readings (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            observed_at_utc TEXT NOT NULL,\n            device_id TEXT NOT NULL,\n            spi_bus INTEGER NOT NULL,\n            spi_device INTEGER NOT NULL,\n            adc_channel INTEGER NOT NULL,\n            adc_raw INTEGER,\n            adc_voltage_estimate_v REAL,\n            vref_assumed_v REAL NOT NULL,\n            quality_flag TEXT NOT NULL,\n            error TEXT,\n            phase TEXT NOT NULL DEFAULT 'unclassified'\n        )"
+    },
+    {
+      "name": "sqlite_sequence",
+      "sql": "CREATE TABLE sqlite_sequence(name,seq)"
+    },
+    {
+      "name": "observation_events",
+      "sql": "CREATE TABLE observation_events (\n            id INTEGER PRIMARY KEY AUTOINCREMENT,\n            noted_at_utc TEXT NOT NULL,\n            note TEXT NOT NULL\n        )"
+    }
+  ],
+  "all": {
+    "n": 24847,
+    "first_jst": "2026-10-13T11:04:28.594000+09:00",
+    "last_jst": "2026-10-30T17:10:00.543000+09:00",
+    "minimum": 3118,
+    "median": 4088,
+    "maximum": 4095,
+    "mean": 4059.6473618545497,
+    "flags": {
+      "ok": 17049,
+      "near_max": 7798
+    },
+    "null_count": 0,
+    "min_interval_s": 28.832,
+    "median_interval_s": 60.0,
+    "max_interval_s": 60.005,
+    "intervals_over_90s": 0
+  },
+  "through19": {
+    "n": 9417,
+    "first_jst": "2026-10-13T11:04:28.594000+09:00",
+    "last_jst": "2026-10-19T23:59:58.614000+09:00",
+    "minimum": 3118,
+    "median": 4021,
+    "maximum": 4095,
+    "mean": 4008.1808431559944,
+    "flags": {
+      "ok": 9056,
+      "near_max": 361
+    },
+    "null_count": 0,
+    "min_interval_s": 28.832,
+    "median_interval_s": 60.0,
+    "max_interval_s": 60.004,
+    "intervals_over_90s": 0
+  },
+  "continuous19": {
+    "n": 9416,
+    "first_jst": "2026-10-13T11:04:57.426000+09:00",
+    "last_jst": "2026-10-19T23:59:58.614000+09:00",
+    "minimum": 3118,
+    "median": 4021.0,
+    "maximum": 4095,
+    "mean": 4008.2438402718776,
+    "flags": {
+      "ok": 9055,
+      "near_max": 361
+    },
+    "null_count": 0,
+    "min_interval_s": 60.0,
+    "median_interval_s": 60.0,
+    "max_interval_s": 60.004,
+    "intervals_over_90s": 0
+  },
+  "continuous19_expected": 9416,
+  "pilot24h": {
+    "n": 1440,
+    "first_jst": "2026-10-13T11:04:57.426000+09:00",
+    "last_jst": "2026-10-14T11:03:57.607000+09:00",
+    "minimum": 3118,
+    "median": 3951.0,
+    "maximum": 4012,
+    "mean": 3889.63125,
+    "flags": {
+      "ok": 1440
+    },
+    "null_count": 0,
+    "min_interval_s": 60.0,
+    "median_interval_s": 60.0,
+    "max_interval_s": 60.004,
+    "intervals_over_90s": 0
+  },
+  "events": [
+    {
+      "id": 1,
+      "noted_at_utc": "2026-10-13T02:04:28.735+00:00",
+      "note": "Start of pilot continuous logging. Physical probe insertion/position and support medium state not verified at logger startup. Values are uncalibrated ADC raw."
+    }
+  ],
+  "daily": [
+    {
+      "day_jst": "2026-10-13",
+      "n": 777,
+      "minimum": 3118,
+      "median": 3896,
+      "maximum": 3979,
+      "mean": 3811.5765765765764,
+      "near_max": 0
+    },
+    {
+      "day_jst": "2026-10-14",
+      "n": 1440,
+      "minimum": 3934,
+      "median": 4003.0,
+      "maximum": 4074,
+      "mean": 4005.9840277777776,
+      "near_max": 0
+    },
+    {
+      "day_jst": "2026-10-15",
+      "n": 1440,
+      "minimum": 4020,
+      "median": 4049.0,
+      "maximum": 4083,
+      "mean": 4050.14375,
+      "near_max": 0
+    },
+    {
+      "day_jst": "2026-10-16",
+      "n": 1440,
+      "minimum": 3964,
+      "median": 4006.5,
+      "maximum": 4072,
+      "mean": 4014.5208333333335,
+      "near_max": 0
+    },
+    {
+      "day_jst": "2026-10-17",
+      "n": 1440,
+      "minimum": 3959,
+      "median": 3991.0,
+      "maximum": 4030,
+      "mean": 3989.3263888888887,
+      "near_max": 0
+    },
+    {
+      "day_jst": "2026-10-18",
+      "n": 1440,
+      "minimum": 3947,
+      "median": 4015.0,
+      "maximum": 4092,
+      "mean": 4012.7506944444444,
+      "near_max": 0
+    },
+    {
+      "day_jst": "2026-10-19",
+      "n": 1440,
+      "minimum": 4043,
+      "median": 4085.0,
+      "maximum": 4095,
+      "mean": 4082.44375,
+      "near_max": 361
+    },
+    {
+      "day_jst": "2026-10-20",
+      "n": 1440,
+      "minimum": 4070,
+      "median": 4093.0,
+      "maximum": 4095,
+      "mean": 4091.6965277777776,
+      "near_max": 687
+    },
+    {
+      "day_jst": "2026-10-21",
+      "n": 1440,
+      "minimum": 4067,
+      "median": 4093.0,
+      "maximum": 4095,
+      "mean": 4091.6784722222224,
+      "near_max": 675
+    },
+    {
+      "day_jst": "2026-10-22",
+      "n": 1440,
+      "minimum": 4053,
+      "median": 4094.0,
+      "maximum": 4095,
+      "mean": 4091.742361111111,
+      "near_max": 723
+    },
+    {
+      "day_jst": "2026-10-23",
+      "n": 1440,
+      "minimum": 4062,
+      "median": 4092.0,
+      "maximum": 4095,
+      "mean": 4090.5493055555557,
+      "near_max": 648
+    },
+    {
+      "day_jst": "2026-10-24",
+      "n": 1440,
+      "minimum": 4060,
+      "median": 4092.0,
+      "maximum": 4095,
+      "mean": 4090.707638888889,
+      "near_max": 664
+    },
+    {
+      "day_jst": "2026-10-25",
+      "n": 1440,
+      "minimum": 4041,
+      "median": 4092.0,
+      "maximum": 4095,
+      "mean": 4090.773611111111,
+      "near_max": 669
+    },
+    {
+      "day_jst": "2026-10-26",
+      "n": 1440,
+      "minimum": 4063,
+      "median": 4094.0,
+      "maximum": 4095,
+      "mean": 4091.2868055555555,
+      "near_max": 742
+    },
+    {
+      "day_jst": "2026-10-27",
+      "n": 1439,
+      "minimum": 4063,
+      "median": 4094,
+      "maximum": 4095,
+      "mean": 4091.1966643502433,
+      "near_max": 740
+    },
+    {
+      "day_jst": "2026-10-28",
+      "n": 1440,
+      "minimum": 4060,
+      "median": 4094.0,
+      "maximum": 4095,
+      "mean": 4091.21875,
+      "near_max": 779
+    },
+    {
+      "day_jst": "2026-10-29",
+      "n": 1440,
+      "minimum": 4047,
+      "median": 4092.0,
+      "maximum": 4095,
+      "mean": 4090.2930555555554,
+      "near_max": 647
+    },
+    {
+      "day_jst": "2026-10-30",
+      "n": 1031,
+      "minimum": 4059,
+      "median": 4092,
+      "maximum": 4095,
+      "mean": 4090.265761396702,
+      "near_max": 463
+    }
+  ],
+  "gaps": [
+    {
+      "seconds": 60.005,
+      "start_jst": "2026-10-22T17:11:59.140000+09:00",
+      "end_jst": "2026-10-22T17:12:59.145000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-14T05:17:57.558000+09:00",
+      "end_jst": "2026-10-14T05:18:57.562000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-16T06:00:57.922000+09:00",
+      "end_jst": "2026-10-16T06:01:57.926000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-16T22:48:58.054000+09:00",
+      "end_jst": "2026-10-16T22:49:58.058000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-17T00:14:58.070000+09:00",
+      "end_jst": "2026-10-17T00:15:58.074000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-18T01:59:58.266000+09:00",
+      "end_jst": "2026-10-18T02:00:58.270000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-19T00:09:58.438000+09:00",
+      "end_jst": "2026-10-19T00:10:58.442000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-20T12:33:58.710000+09:00",
+      "end_jst": "2026-10-20T12:34:58.714000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-20T23:02:58.790000+09:00",
+      "end_jst": "2026-10-20T23:03:58.794000+09:00"
+    },
+    {
+      "seconds": 60.004,
+      "start_jst": "2026-10-21T08:38:58.866000+09:00",
+      "end_jst": "2026-10-21T08:39:58.870000+09:00"
+    }
+  ],
+  "jumps": [
+    {
+      "delta": -157,
+      "start_jst": "2026-10-13T12:13:57.434000+09:00",
+      "end_jst": "2026-10-13T12:14:57.434000+09:00",
+      "before": 3513,
+      "after": 3356
+    },
+    {
+      "delta": 137,
+      "start_jst": "2026-10-13T11:31:57.429000+09:00",
+      "end_jst": "2026-10-13T11:32:57.429000+09:00",
+      "before": 3118,
+      "after": 3255
+    },
+    {
+      "delta": -112,
+      "start_jst": "2026-10-13T11:45:57.431000+09:00",
+      "end_jst": "2026-10-13T11:46:57.431000+09:00",
+      "before": 3388,
+      "after": 3276
+    },
+    {
+      "delta": -101,
+      "start_jst": "2026-10-13T11:22:57.428000+09:00",
+      "end_jst": "2026-10-13T11:23:57.428000+09:00",
+      "before": 3471,
+      "after": 3370
+    },
+    {
+      "delta": 96,
+      "start_jst": "2026-10-13T11:54:57.432000+09:00",
+      "end_jst": "2026-10-13T11:55:57.432000+09:00",
+      "before": 3394,
+      "after": 3490
+    },
+    {
+      "delta": 95,
+      "start_jst": "2026-10-13T11:47:57.431000+09:00",
+      "end_jst": "2026-10-13T11:48:57.431000+09:00",
+      "before": 3303,
+      "after": 3398
+    },
+    {
+      "delta": -92,
+      "start_jst": "2026-10-13T11:29:57.429000+09:00",
+      "end_jst": "2026-10-13T11:30:57.429000+09:00",
+      "before": 3299,
+      "after": 3207
+    },
+    {
+      "delta": 91,
+      "start_jst": "2026-10-13T11:28:57.429000+09:00",
+      "end_jst": "2026-10-13T11:29:57.429000+09:00",
+      "before": 3208,
+      "after": 3299
+    },
+    {
+      "delta": 90,
+      "start_jst": "2026-10-13T11:41:57.430000+09:00",
+      "end_jst": "2026-10-13T11:42:57.430000+09:00",
+      "before": 3391,
+      "after": 3481
+    },
+    {
+      "delta": -89,
+      "start_jst": "2026-10-13T11:30:57.429000+09:00",
+      "end_jst": "2026-10-13T11:31:57.429000+09:00",
+      "before": 3207,
+      "after": 3118
+    },
+    {
+      "delta": -87,
+      "start_jst": "2026-10-13T11:37:57.430000+09:00",
+      "end_jst": "2026-10-13T11:38:57.430000+09:00",
+      "before": 3407,
+      "after": 3320
+    },
+    {
+      "delta": -85,
+      "start_jst": "2026-10-13T11:49:57.431000+09:00",
+      "end_jst": "2026-10-13T11:50:57.431000+09:00",
+      "before": 3474,
+      "after": 3389
+    },
+    {
+      "delta": -83,
+      "start_jst": "2026-10-13T11:42:57.430000+09:00",
+      "end_jst": "2026-10-13T11:43:57.430000+09:00",
+      "before": 3481,
+      "after": 3398
+    },
+    {
+      "delta": 82,
+      "start_jst": "2026-10-13T11:35:57.429000+09:00",
+      "end_jst": "2026-10-13T11:36:57.430000+09:00",
+      "before": 3284,
+      "after": 3366
+    },
+    {
+      "delta": 76,
+      "start_jst": "2026-10-13T11:48:57.431000+09:00",
+      "end_jst": "2026-10-13T11:49:57.431000+09:00",
+      "before": 3398,
+      "after": 3474
+    }
+  ],
+  "outbox_query": "SELECT device_id,status,count(*) n,min(created_at) first_utc,max(created_at) last_utc,max(retry_count) retry_max,sum(retry_count>0) retried_rows FROM outbox_queue GROUP BY 1,2",
+  "outbox": [
+    {
+      "device_id": "raspberrypi2",
+      "status": "synced",
+      "n": 10117,
+      "first_utc": "2026-09-13 01:35:00",
+      "last_utc": "2026-10-13 01:35:00",
+      "retry_max": 1,
+      "retried_rows": 14
+    }
+  ],
+  "manual49": [
+    {
+      "phase": "probe_open_before",
+      "n": 11,
+      "minimum": 4065,
+      "median": 4091,
+      "maximum": 4095,
+      "mean": 4088.3636363636365
+    },
+    {
+      "phase": "wet_filter_wool",
+      "n": 19,
+      "minimum": 3735,
+      "median": 3755,
+      "maximum": 3768,
+      "mean": 3752.684210526316
+    },
+    {
+      "phase": "probe_wiped_after",
+      "n": 19,
+      "minimum": 4076,
+      "median": 4092,
+      "maximum": 4095,
+      "mean": 4089.0526315789475
+    }
+  ],
+  "adc_csv_sha256": "c73079e9b4adc388bb51e50c273db8d8920cda6ec60fd11cca23ec955d075db5"
+}

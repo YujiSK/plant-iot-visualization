@@ -1,0 +1,72 @@
+Captured 2026-10-30T17:17:13.825127+09:00
+$ hostname
+exit=0
+raspi2
+
+$ git -C /home/pi/plant-iot status --short
+exit=0
+
+$ git -C /home/pi/plant-iot rev-parse HEAD
+exit=0
+a288f6d4fc0703fce2cd1f4f7ac208acd11ebef1
+
+$ systemctl show plant-sensor-raspberrypi2.service plant-slack-observation.service plant-supabase-health.timer cloudflared-quick-tunnel.service -p LoadState -p ActiveState -p SubState -p UnitFileState -p FragmentPath -p ActiveEnterTimestamp
+exit=0
+LoadState=loaded
+ActiveState=inactive
+SubState=dead
+FragmentPath=/etc/systemd/system/plant-sensor-raspberrypi2.service
+UnitFileState=disabled
+ActiveEnterTimestamp=
+
+LoadState=loaded
+ActiveState=active
+SubState=running
+FragmentPath=/etc/systemd/system/plant-slack-observation.service
+UnitFileState=enabled
+ActiveEnterTimestamp=Tue 2026-10-13 10:39:00 JST
+
+LoadState=not-found
+ActiveState=inactive
+SubState=dead
+FragmentPath=
+UnitFileState=
+ActiveEnterTimestamp=
+
+LoadState=loaded
+ActiveState=active
+SubState=running
+FragmentPath=/etc/systemd/system/cloudflared-quick-tunnel.service
+UnitFileState=enabled
+ActiveEnterTimestamp=Tue 2026-10-13 10:39:00 JST
+
+$ systemctl --user show plant-iot-moisture-logger.service -p ActiveState -p SubState -p ExecStart -p ActiveEnterTimestamp
+exit=0
+ExecStart={ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 -u /home/pi/plant-iot-moisture/moisture_logger.py run --interval 60 ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+ActiveState=active
+SubState=running
+ActiveEnterTimestamp=Tue 2026-10-13 11:04:57 JST
+
+$ journalctl --list-boots --no-pager
+exit=0
+IDX BOOT ID                          FIRST ENTRY                 LAST ENTRY
+  0 5169b19f95494edc90c172e4c6bab053 Tue 2026-10-13 10:38:45 JST Fri 2026-10-30 17:17:06 JST
+
+$ journalctl -u plant-sensor-raspberrypi2.service --since 2026-07-10 --until 2026-07-23 --no-pager
+exit=0
+-- No entries --
+
+$ journalctl _SYSTEMD_USER_UNIT=plant-iot-moisture-logger.service -n 5 --no-pager
+exit=0
+Oct 30 17:13:00 raspi2 python3[2721]: 2026-10-30T08:13:00.543+00:00 adc_raw=4095 v_est=3.3 flag=near_max error=None
+Oct 30 17:14:00 raspi2 python3[2721]: 2026-10-30T08:14:00.543+00:00 adc_raw=4083 v_est=3.2903296703296703 flag=ok error=None
+Oct 30 17:15:00 raspi2 python3[2721]: 2026-10-30T08:15:00.543+00:00 adc_raw=4087 v_est=3.2935531135531133 flag=ok error=None
+Oct 30 17:16:00 raspi2 python3[2721]: 2026-10-30T08:16:00.544+00:00 adc_raw=4095 v_est=3.3 flag=near_max error=None
+Oct 30 17:17:00 raspi2 python3[2721]: 2026-10-30T08:17:00.544+00:00 adc_raw=4092 v_est=3.2975824175824173 flag=ok error=None
+
+$ curl -s -o /dev/null -w %{http_code} --max-time 10 http://localhost:8010/slack/events
+exit=0
+405
+$ curl -s -o /dev/null -w %{http_code} --max-time 15 https://yujisk.github.io/plant-iot-visualization/
+exit=0
+200

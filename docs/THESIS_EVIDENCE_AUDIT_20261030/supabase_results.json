@@ -1,0 +1,3082 @@
+{
+  "project": "plant-iot-visualization",
+  "audit_date": "2026-10-30",
+  "queries": {
+    "inventory": "SELECT 'sensor_logs' AS table_name,count(*) n,min(created_at) first_utc,max(created_at) last_utc FROM sensor_logs UNION ALL SELECT 'care_logs',count(*),min(created_at),max(created_at) FROM care_logs UNION ALL SELECT 'plant_observations',count(*),min(observed_at),max(observed_at) FROM plant_observations;\nSELECT device_id,source,count(*) n,min(created_at) AT TIME ZONE 'Asia/Tokyo' first_jst,max(created_at) AT TIME ZONE 'Asia/Tokyo' last_jst FROM sensor_logs GROUP BY device_id,source ORDER BY device_id,source;",
+    "series": "SELECT device_id,source,count(*) n,min(created_at) AT TIME ZONE 'Asia/Tokyo' first_jst,max(created_at) AT TIME ZONE 'Asia/Tokyo' last_jst FROM sensor_logs GROUP BY device_id,source ORDER BY device_id,source;",
+    "monthly": "SELECT device_id,source,to_char(created_at AT TIME ZONE 'Asia/Tokyo','YYYY-MM') month_jst,count(*) n FROM sensor_logs GROUP BY 1,2,3 ORDER BY 1,2,3;",
+    "preaccident": "SELECT source,count(*) n,min(created_at) AT TIME ZONE 'Asia/Tokyo' first_jst,max(created_at) AT TIME ZONE 'Asia/Tokyo' last_jst FROM sensor_logs WHERE device_id='raspberrypi2' AND created_at>='2026-07-22 00:00+09' AND created_at<'2026-08-02 19:15+09' GROUP BY source;",
+    "care": "SELECT id,action_type,created_at AT TIME ZONE 'Asia/Tokyo' time_jst,left(regexp_replace(note,'https?://[^\\s]+','[URL]','g'),3500) note FROM care_logs WHERE (created_at>='2026-07-01' AND created_at<'2026-08-10') OR note ~ '倒伏|倒れ|給水|10月|10/19' ORDER BY created_at;",
+    "tables": "SELECT 'sensor_logs' table_name,count(*) n,min(created_at) first_utc,max(created_at) last_utc FROM sensor_logs UNION ALL SELECT 'care_logs',count(*),min(created_at),max(created_at) FROM care_logs UNION ALL SELECT 'plant_observations',count(*),min(observed_at),max(observed_at) FROM plant_observations;",
+    "daily": "SELECT device_id,source,(created_at AT TIME ZONE 'Asia/Tokyo')::date day_jst,count(*) n,count(DISTINCT floor(extract(epoch from created_at)/300)) bins_5min FROM sensor_logs GROUP BY 1,2,3 ORDER BY 1,2,3;",
+    "gaps": "WITH s AS (SELECT device_id,source,created_at,lag(created_at) OVER(PARTITION BY device_id,source ORDER BY created_at,id) prev FROM sensor_logs) SELECT device_id,source,prev AT TIME ZONE 'Asia/Tokyo' prev_jst,created_at AT TIME ZONE 'Asia/Tokyo' next_jst,extract(epoch FROM created_at-prev) seconds FROM s WHERE prev IS NOT NULL ORDER BY created_at-prev DESC LIMIT 25;",
+    "intervals": "WITH s AS (SELECT device_id,source,extract(epoch FROM created_at-lag(created_at) OVER(PARTITION BY device_id,source ORDER BY created_at,id)) dt FROM sensor_logs) SELECT device_id,source,count(dt) n,min(dt),percentile_cont(ARRAY[0.05,0.5,0.95,0.99]) WITHIN GROUP(ORDER BY dt) percentiles,max(dt),count(*) FILTER(WHERE dt=0) duplicate_timestamps,count(*) FILTER(WHERE dt<60) under_60s,count(*) FILTER(WHERE dt>600) over_600s FROM s GROUP BY 1,2;",
+    "coverage": "WITH periods(label,a,b) AS (VALUES ('preaccident','2026-07-22 00:00+09'::timestamptz,'2026-08-02 19:15+09'::timestamptz),('after_recovery','2026-07-22 13:00+09'::timestamptz,'2026-08-02 19:15+09'::timestamptz),('full_grid','2026-06-13 01:20+09'::timestamptz,'2026-10-13 10:40+09'::timestamptz)) SELECT label,a,b,extract(epoch FROM b-a)/300 expected,count(s.id) rows,count(DISTINCT floor(extract(epoch FROM s.created_at)/300)) occupied_bins FROM periods LEFT JOIN sensor_logs s ON s.created_at>=a AND s.created_at<b AND s.device_id='raspberrypi2' AND s.source='raspberrypi2-ds18b20-bh1750-float' GROUP BY label,a,b;",
+    "distribution": "WITH s AS (SELECT CASE WHEN created_at>='2026-07-22 00:00+09' AND created_at<'2026-08-02 19:15+09' THEN 'preaccident' ELSE 'other' END period,* FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float') SELECT period,count(*) n,count(solution_temperature) temp_n,min(solution_temperature),max(solution_temperature),avg(solution_temperature),percentile_cont(ARRAY[0.05,0.5,0.95]) WITHIN GROUP(ORDER BY solution_temperature) temp_percentiles,count(light_lux) lux_n,min(light_lux) lux_min,max(light_lux) lux_max,avg(light_lux) lux_avg,percentile_cont(ARRAY[0.05,0.5,0.95]) WITHIN GROUP(ORDER BY light_lux) lux_percentiles,count(*) FILTER(WHERE float_switch_state='low_water') low_water,count(*) FILTER(WHERE float_switch_state='water_ok') water_ok,count(*) FILTER(WHERE float_switch_state IS NULL) float_null,min(vitality_score) vitality_min,max(vitality_score) vitality_max,avg(vitality_score) vitality_avg FROM s GROUP BY period;",
+    "nearest_coverage": "WITH periods(label,a,b) AS (VALUES ('preaccident','2026-07-22 00:00+09'::timestamptz,'2026-08-02 19:15+09'::timestamptz),('after_recovery','2026-07-22 13:00+09'::timestamptz,'2026-08-02 19:15+09'::timestamptz),('full_grid','2026-06-13 01:20+09'::timestamptz,'2026-10-13 10:40+09'::timestamptz)), s AS (SELECT *,floor((extract(epoch FROM created_at)+150)/300)*300 slot FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float') SELECT label,extract(epoch FROM b-a)/300 expected,count(s.id) rows,count(DISTINCT slot) occupied,count(DISTINCT slot) FILTER(WHERE solution_temperature IS NOT NULL AND light_lux IS NOT NULL AND float_switch_state IS NOT NULL) complete_slots FROM periods LEFT JOIN s ON slot>=extract(epoch FROM a) AND slot<extract(epoch FROM b) GROUP BY label,a,b;",
+    "daily_quality": "SELECT (created_at AT TIME ZONE 'Asia/Tokyo')::date day_jst,count(*) n,count(solution_temperature) temp_n,count(light_lux) lux_n,count(*) FILTER(WHERE float_switch_state='low_water') low_water,min(solution_temperature) temp_min,max(solution_temperature) temp_max,count(DISTINCT floor((extract(epoch FROM created_at)+150)/300)) nearest_slots FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float' GROUP BY 1 ORDER BY 1;",
+    "anomalies": "SELECT 'temp85' kind,count(*) n,min(created_at) first_utc,max(created_at) last_utc FROM sensor_logs WHERE device_id='raspberrypi2' AND solution_temperature=85 UNION ALL SELECT 'temperature_null',count(*),min(created_at),max(created_at) FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float' AND solution_temperature IS NULL UNION ALL SELECT 'lux_null',count(*),min(created_at),max(created_at) FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float' AND light_lux IS NULL;",
+    "accident_values": "SELECT id,created_at AT TIME ZONE 'Asia/Tokyo' time_jst,solution_temperature,light_lux,float_switch_state,vitality_score FROM sensor_logs WHERE device_id='raspberrypi2' AND created_at>='2026-08-02 18:45+09' AND created_at<'2026-08-02 19:30+09' ORDER BY created_at;",
+    "constraints": "SELECT indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='sensor_logs';",
+    "obs": "SELECT id,observed_at AT TIME ZONE 'Asia/Tokyo' observed_jst,created_at AT TIME ZONE 'Asia/Tokyo' created_jst,device_id,model,wilting,yellowing,left(summary,600) summary,raw_ai_json->>'backfilled' backfilled FROM plant_observations ORDER BY observed_at;",
+    "formal_normalized": "WITH slots AS (SELECT generate_series('2026-07-22 13:05+09'::timestamptz,'2026-08-02 19:15+09'::timestamptz,interval '5 min') t), matched AS (SELECT t,s.* FROM slots LEFT JOIN LATERAL (SELECT id,created_at,solution_temperature,light_lux,float_switch_state,vitality_score FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float' AND created_at>=t-interval '150 seconds' AND created_at<t+interval '150 seconds' ORDER BY abs(extract(epoch FROM created_at-t)),id LIMIT 1) s ON true) SELECT count(*) expected,count(id) matched,array_agg(t AT TIME ZONE 'Asia/Tokyo') FILTER(WHERE id IS NULL) missing,avg(abs(extract(epoch FROM created_at-t))) mean_offset,percentile_cont(ARRAY[0.5,0.95]) WITHIN GROUP(ORDER BY abs(extract(epoch FROM created_at-t))) offset_percentiles,max(abs(extract(epoch FROM created_at-t))) max_offset,avg(solution_temperature) temp_mean,stddev_samp(solution_temperature) temp_sd,min(solution_temperature) temp_min,max(solution_temperature) temp_max,percentile_cont(ARRAY[0.25,0.5,0.75]) WITHIN GROUP(ORDER BY solution_temperature) temp_quartiles,count(*) FILTER(WHERE solution_temperature>=30) temp_ge30,count(*) FILTER(WHERE solution_temperature>=35) temp_ge35,avg(light_lux) lux_mean,percentile_cont(ARRAY[0.5,0.95]) WITHIN GROUP(ORDER BY light_lux) lux_percentiles,count(*) FILTER(WHERE float_switch_state='low_water') low_water,avg(vitality_score) vitality_mean FROM matched;",
+    "valid_ranges": "SELECT min(created_at) FILTER(WHERE solution_temperature IS NOT NULL) AT TIME ZONE 'Asia/Tokyo' temp_first,max(created_at) FILTER(WHERE solution_temperature IS NOT NULL) AT TIME ZONE 'Asia/Tokyo' temp_last,max(created_at) FILTER(WHERE light_lux IS NOT NULL) AT TIME ZONE 'Asia/Tokyo' lux_last,count(*) FILTER(WHERE solution_temperature=85) temp85,count(*) FILTER(WHERE solution_temperature<0 OR solution_temperature>50) temp_outside_screen,count(*) FILTER(WHERE light_lux<0 OR light_lux>60000) lux_outside_screen FROM sensor_logs WHERE device_id='raspberrypi2' AND source='raspberrypi2-ds18b20-bh1750-float';",
+    "other_distributions": "SELECT device_id,source,count(*) n,count(temperature) temp_n,min(temperature) temp_min,max(temperature) temp_max,percentile_cont(0.5) WITHIN GROUP(ORDER BY temperature) temp_median,count(humidity) humidity_n,min(humidity) humidity_min,max(humidity) humidity_max,count(pressure) pressure_n,min(water_raw) water_min,max(water_raw) water_max,min(light_raw) light_min,max(light_raw) light_max FROM sensor_logs WHERE device_id IS DISTINCT FROM 'raspberrypi2' GROUP BY 1,2;"
+  },
+  "results": {
+    "inventory": [
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "n": 35407,
+        "first_jst": "2026-06-13 01:22:21.972648",
+        "last_jst": "2026-10-13 10:35:00.669265"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "sensor",
+        "n": 1,
+        "first_jst": "2026-07-22 12:51:57.505495",
+        "last_jst": "2026-07-22 12:51:57.505495"
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "n": 2139,
+        "first_jst": "2026-06-13 01:15:02.266207",
+        "last_jst": "2026-06-20 11:25:01.724688"
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "n": 283,
+        "first_jst": "2026-06-12 01:42:47.451666",
+        "last_jst": "2026-06-13 01:10:02.121447"
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "n": 2683,
+        "first_jst": "2026-06-02 04:10:14.097428",
+        "last_jst": "2026-06-11 12:05:03.506956"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "n": 2767,
+        "first_jst": "2026-04-26 02:57:44.964475",
+        "last_jst": "2026-05-25 21:42:40.403323"
+      }
+    ],
+    "series": [
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "n": 35407,
+        "first_jst": "2026-06-13 01:22:21.972648",
+        "last_jst": "2026-10-13 10:35:00.669265"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "sensor",
+        "n": 1,
+        "first_jst": "2026-07-22 12:51:57.505495",
+        "last_jst": "2026-07-22 12:51:57.505495"
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "n": 2139,
+        "first_jst": "2026-06-13 01:15:02.266207",
+        "last_jst": "2026-06-20 11:25:01.724688"
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "n": 283,
+        "first_jst": "2026-06-12 01:42:47.451666",
+        "last_jst": "2026-06-13 01:10:02.121447"
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "n": 2683,
+        "first_jst": "2026-06-02 04:10:14.097428",
+        "last_jst": "2026-06-11 12:05:03.506956"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "n": 2767,
+        "first_jst": "2026-04-26 02:57:44.964475",
+        "last_jst": "2026-05-25 21:42:40.403323"
+      }
+    ],
+    "monthly": [
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "month_jst": "2026-06",
+        "n": 5502
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "month_jst": "2026-07",
+        "n": 6569
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "month_jst": "2026-08",
+        "n": 8991
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "month_jst": "2026-09",
+        "n": 10171
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "month_jst": "2026-10",
+        "n": 4174
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "sensor",
+        "month_jst": "2026-07",
+        "n": 1
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "month_jst": "2026-06",
+        "n": 2139
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "month_jst": "2026-06",
+        "n": 283
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "month_jst": "2026-06",
+        "n": 2683
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "month_jst": "2026-04",
+        "n": 90
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "month_jst": "2026-05",
+        "n": 2677
+      }
+    ],
+    "preaccident": [
+      {
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "n": 3794,
+        "first_jst": "2026-07-22 12:39:07.554533",
+        "last_jst": "2026-08-02 19:10:00.132571"
+      },
+      {
+        "source": "sensor",
+        "n": 1,
+        "first_jst": "2026-07-22 12:51:57.505495",
+        "last_jst": "2026-07-22 12:51:57.505495"
+      }
+    ],
+    "care": [
+      {
+        "id": "c196b503-0a7c-40e0-a1cc-0700212ea84c",
+        "action_type": "checked",
+        "time_jst": "2026-06-15 03:01:35.809267",
+        "note": "機能テスト記録: 2026-06-15 02:50-02:59 JSTのlow_water / water_ok遷移は、Slack通知動作確認のためにユーザーが手動でフロートスイッチを操作したイベントです。実際の貯水部水位変化ではなく、植物の吸水・蒸発・給水不足の分析対象から除外します。device=raspberrypi2, location=location-b"
+      },
+      {
+        "id": "9a8709c9-fc5c-46d4-9a13-dde0412b1744",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 16:19:56.837524",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援はルールベースの推定です。\nobserved_at=2026-07-01 16:19:47 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782890387.475079\nslack_file_id=F0BE726RGMR\nslack_file_name=IMG_20260701_161759.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T07:15:00.483812+00:00\nnearest_vitality_score=91\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=26.375\nnearest_light_lux=1241.7\nai_observation_json={\"confidence\": \"medium\", \"crowding\": \"medium\", \"growth_stage\": \"cotyledon\", \"moisture_observation\": \"sensor_water_ok\", \"next_action\": \"本葉の出現を確認してください\", \"photo_quality\": \"good\", \"plant_count_estimate\": 20, \"wilting\": false, \"yellowing\": false}\nobservation_comparison_json={\"crowding_change\": \"medium -> medium\", \"growth_stage_change\": \"cotyledon -> cotyledon\", \"has_previous\": true, \"plant_count_change\": \"20 -> 20\", \"previous_observed_at\": \"2026-06-29 15:01:15 JST\", \"summary\": \"本葉の出現を確認してください\"}"
+      },
+      {
+        "id": "2778844a-49bf-405e-af19-4ae1478f4e53",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 17:11:01.769",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 17:10:51 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782893451.504759\nslack_file_id=F0BF82X43KJ\nslack_file_name=IMG_20260701_161759.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T08:10:00.203861+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=26.0\nnearest_light_lux=846.7\nai_observation_error=HTTPError: 429 Client Error: Too Many Requests for url: [URL]"
+      },
+      {
+        "id": "bf0c1747-9f98-4b25-b00b-1a72e796e2a0",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 17:11:11.211178",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 17:10:51 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782893451.504759\nslack_file_id=F0BF82X43KJ\nslack_file_name=IMG_20260701_161759.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T08:10:00.203861+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=26.0\nnearest_light_lux=846.7\nai_observation_error=HTTPError: 429 Client Error: Too Many Requests for url: [URL]"
+      },
+      {
+        "id": "d5c64745-4246-4853-9051-e68590ef711b",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 17:12:08.864936",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 17:10:51 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782893451.504759\nslack_file_id=F0BF82X43KJ\nslack_file_name=IMG_20260701_161759.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T08:10:00.203861+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=26.0\nnearest_light_lux=846.7\nai_observation_error=HTTPError: 429 Client Error: Too Many Requests for url: [URL]"
+      },
+      {
+        "id": "0ed368a2-0803-4608-8b3b-23f6e4f163ad",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 17:17:12.122888",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 17:10:51 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782893451.504759\nslack_file_id=F0BF82X43KJ\nslack_file_name=IMG_20260701_161759.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T08:10:00.203861+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=26.0\nnearest_light_lux=846.7\nai_observation_error=HTTPError: 429 Client Error: Too Many Requests for url: [URL]"
+      },
+      {
+        "id": "9e8f4bfe-4d1a-4c82-bace-fee6afaa4a23",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 17:54:36.197695",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 17:54:04 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782896044.589889\nslack_file_id=F0BEHPEREUU\nslack_file_name=image.png\nslack_file_mimetype=image/png\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T08:50:00.263755+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=25.625\nnearest_light_lux=430.0\nai_observation_error=ValueError: Gemini response did not contain observation JSON"
+      },
+      {
+        "id": "4033f507-14c0-4a3a-a0a3-671582850313",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 17:59:10.588745",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 17:58:49 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782896329.171899\nslack_file_id=F0BDYM7L95M\nslack_file_name=image.png\nslack_file_mimetype=image/png\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T08:55:01.783481+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=25.687\nnearest_light_lux=332.5\nai_observation_json={\"confidence\": 0.9, \"cotyledon_visible\": true, \"crowding\": \"medium\", \"growth_stage\": \"true_leaf_2\", \"leaf_color\": \"mixed\", \"leaf_size\": \"medium\", \"next_action\": \"Remove the wilted seedlings at the bottom to maintain hygiene, and monitor the nutrient solution to address the leaf paleness.\", \"plant_count_estimate\": 8, \"root_length_estimate\": null, \"root_visibility\": false, \"summary\": \"Basil seedlings growing on a white substrate in a wire mesh trainer. Most seedlings have developed their first and second pairs of true leaves. Some seedlings at the bottom have wilted and collapsed, and there is noticeable yellowing/paleness on some of the upper-right leaves.\", \"true_leaf_detected\": true, \"true_leaf_pair_count\": 2, \"wilting\": true, \"yellowing\": true}\nobservation_comparison_json={\"crowding_change\": \"medium -> medium\", \"growth_stage_change\": \"cotyledon -> true_leaf_2\", \"has_previous\": true, \"plant_count_change\": \"20 -> 8\", \"previous_observed_at\": \"2026-07-01 16:19:47 JST\", \"summary\": \"生育段階に変化があります。次回も同じ角度で観察してください。\", \"true_leaf_pair_count_change\": \"None -> 2\"}"
+      },
+      {
+        "id": "79fcc099-3de9-4135-95b8-030278908c87",
+        "action_type": "checked",
+        "time_jst": "2026-07-01 19:05:29.905639",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-01 19:05:05 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1782900305.647079\nslack_file_id=F0BECHY61UN\nslack_file_name=image.png\nslack_file_mimetype=image/png\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-01T10:05:01.968332+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=25.0\nnearest_light_lux=30.8\nai_observation_json={\"confidence\": 0.9, \"cotyledon_visible\": true, \"crowding\": \"medium\", \"growth_stage\": \"true_leaf_2\", \"leaf_color\": \"mixed\", \"leaf_size\": \"medium\", \"next_action\": \"Remove the wilted/dead seedlings to prevent mold, and adjust lighting or nutrient balance to address the yellowing on the right.\", \"plant_count_estimate\": 8, \"root_length_estimate\": null, \"root_visibility\": false, \"summary\": \"Basil seedlings are growing in a mesh strainer with a white fiber substrate. Several healthy seedlings have developed 1-2 pairs of true leaves, though there are a few collapsed/wilted seedlings at the bottom and some yellowing/pale leaves on the right-side plants.\", \"true_leaf_detected\": true, \"true_leaf_pair_count\": 2, \"wilting\": true, \"yellowing\": true}\nobservation_comparison_json={\"crowding_change\": \"medium -> medium\", \"growth_stage_change\": \"true_leaf_2 -> true_leaf_2\", \"has_previous\": true, \"plant_count_change\": \"8 -> 8\", \"previous_observed_at\": \"2026-07-01T08:58:49.171899+00:00\", \"summary\": \"Remove the wilted/dead seedlings to prevent mold, and adjust lighting or nutrient balance to address the yellowing on the right.\", \"true_leaf_pair_count_change\": \"2 -> 2\"}"
+      },
+      {
+        "id": "772b503d-3ee5-4152-b753-f8abd05eb9cf",
+        "action_type": "checked",
+        "time_jst": "2026-07-05 04:50:12.606647",
+        "note": "自動記録: 2号機のフロートスイッチがlow_waterからwater_okへ回復しました。device=raspberrypi2, location=location-b, detected_at=2026-07-05T04:50:12.519109+09:00"
+      },
+      {
+        "id": "7aff0bbb-2483-4a40-96b0-d78fcc0c7ae1",
+        "action_type": "checked",
+        "time_jst": "2026-07-05 04:58:39.002181",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-05 04:58:21 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1783195101.631609\nslack_file_id=F0BF2UA0WE9\nslack_file_name=1000033961.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nnearest_sensor_log_time=2026-07-04T19:55:00.472707+00:00\nnearest_vitality_score=100\nnearest_float_switch_state=water_ok\nnearest_solution_temperature=24.625\nnearest_light_lux=30.0\nai_observation_json={\"confidence\": 0.9, \"cotyledon_visible\": true, \"crowding\": \"medium\", \"growth_stage\": \"vegetative\", \"leaf_color\": \"green\", \"leaf_size\": \"medium\", \"next_action\": \"Maintain current light and watering schedule. Plan to thin or transplant individual seedlings soon to avoid over-crowding as they continue to grow.\", \"plant_count_estimate\": 5, \"root_length_estimate\": null, \"root_visibility\": false, \"summary\": \"Multiple healthy basil seedlings are growing well on a white fiber substrate within a metal mesh strainer. Most plants have developed at least two pairs of true leaves, showing good vigor and a healthy green color with no signs of wilting.\", \"true_leaf_detected\": true, \"true_leaf_pair_count\": 2, \"wilting\": false, \"yellowing\": false}\nobservation_comparison_json={\"crowding_change\": \"medium -> medium\", \"growth_stage_change\": \"true_leaf_2 -> vegetative\", \"has_previous\": true, \"plant_count_change\": \"8 -> 5\", \"previous_observed_at\": \"2026-07-01T10:05:05.647079+00:00\", \"summary\": \"生育段階に変化があります。次回も同じ角度で観察してください。\", \"true_leaf_pair_count_change\": \"2 -> 2\"}"
+      },
+      {
+        "id": "8b687526-3afc-4913-a450-623aa5959e24",
+        "action_type": "checked",
+        "time_jst": "2026-07-15 22:37:05.073969",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-11 18:31:05 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1783762265.949099\nslack_file_id=F0BG7TEBTHV\nslack_file_name=IMG_20260711_182817.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nai_observation_json={\"confidence\": 0.95, \"cotyledon_visible\": true, \"crowding\": \"high\", \"growth_stage\": \"vegetative\", \"leaf_color\": \"green\", \"leaf_size\": \"medium\", \"model\": \"gemini-3.1-flash-lite\", \"next_action\": \"Consider thinning the plants or transplanting them to provide more space for growth.\", \"plant_count_estimate\": 4, \"provider\": \"gemini\", \"root_length_estimate\": 1.5, \"root_visibility\": true, \"summary\": \"The basil plants are in the vegetative stage with multiple pairs of true leaves visible. They appear healthy but are quite crowded in the small container.\", \"true_leaf_detected\": true, \"true_leaf_pair_count\": 2, \"wilting\": false, \"yellowing\": false}\nobservation_comparison_json={\"crowding_change\": \"medium -> high\", \"growth_stage_change\": \"vegetative -> vegetative\", \"has_previous\": true, \"plant_count_change\": \"5 -> 4\", \"previous_observed_at\": \"2026-07-04T19:58:21.631609+00:00\", \"summary\": \"推定株数に変化があります。発芽株数を目視で確認してください。\", \"true_leaf_pair_count_change\": \"2 -> 2\"}"
+      },
+      {
+        "id": "166a6d86-634f-4ddd-8c2b-d9dcb75fb323",
+        "action_type": "checked",
+        "time_jst": "2026-07-15 23:34:48.909556",
+        "note": "Slackに植物観察写真が投稿されました。AI観察支援は画像AIによる非診断の観察支援です。\nobserved_at=2026-07-15 23:34:34 JST\ndevice_id=raspberrypi2\nlocation_id=location-b\nslack_channel_id=C0BAUF7LBEX\nslack_user_id=U096BR7HGGP\nslack_ts=1784126074.319649\nslack_file_id=F0BJCLETX08\nslack_file_name=IMG_20260715_202430.jpg\nslack_file_mimetype=image/jpeg\nslack_file_url=[URL]\nai_observation_json={\"confidence\": 0.95, \"cotyledon_visible\": true, \"crowding\": \"high\", \"growth_stage\": \"vegetative\", \"leaf_color\": \"green\", \"leaf_size\": \"medium\", \"model\": \"gemini-3.1-flash-lite\", \"next_action\": \"Consider thinning the plants to reduce crowding and allow for better growth.\", \"plant_count_estimate\": 6, \"provider\": \"gemini\", \"root_length_estimate\": 1.5, \"root_visibility\": true, \"summary\": \"The basil plants are in the vegetative stage with multiple sets of true leaves visible. The plants are quite crowded in the small container.\", \"true_leaf_detected\": true, \"true_leaf_pair_count\": 2, \"wilting\": false, \"yellowing\": false}\nobservation_comparison_json={\"crowding_change\": \"high -> high\", \"growth_stage_change\": \"vegetative -> vegetative\", \"has_previous\": true, \"plant_count_change\": \"4 -> 6\", \"previous_observed_at\": \"2026-07-11T09:31:05.949099+00:00\", \"summary\": \"推定株数に変化があります。発芽株数を目視で確認してください。\", \"true_leaf_pair_count_change\": \"2 -> 2\"}"
+      },
+      {
+        "id": "4e3d328e-d2eb-4c49-8892-e2cebc3cbaf3",
+        "action_type": "checked",
+        "time_jst": "2026-08-07 17:02:42.485957",
+        "note": "自動記録: 2号機のフロートスイッチがlow_waterからwater_okへ回復しました。device=raspberrypi2, location=location-b, detected_at=2026-08-07T17:02:42.356647+09:00"
+      }
+    ],
+    "tables": [
+      {
+        "table_name": "sensor_logs",
+        "n": 43280,
+        "first_utc": "2026-04-25 17:57:44.964475+00",
+        "last_utc": "2026-10-13 01:35:00.669265+00"
+      },
+      {
+        "table_name": "care_logs",
+        "n": 29,
+        "first_utc": "2026-05-18 00:10:03.227477+00",
+        "last_utc": "2026-09-09 06:41:26.172142+00"
+      },
+      {
+        "table_name": "plant_observations",
+        "n": 7,
+        "first_utc": "2026-06-16 18:37:32+00",
+        "last_utc": "2026-07-15 14:34:34.319649+00"
+      }
+    ],
+    "daily": [
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-13",
+        "n": 254,
+        "bins_5min": 250
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-14",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-15",
+        "n": 254,
+        "bins_5min": 234
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-16",
+        "n": 220,
+        "bins_5min": 194
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-17",
+        "n": 317,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-18",
+        "n": 314,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-19",
+        "n": 322,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-20",
+        "n": 321,
+        "bins_5min": 279
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-21",
+        "n": 336,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-22",
+        "n": 333,
+        "bins_5min": 281
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-23",
+        "n": 310,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-24",
+        "n": 328,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-25",
+        "n": 315,
+        "bins_5min": 279
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-26",
+        "n": 310,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-27",
+        "n": 310,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-28",
+        "n": 320,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-29",
+        "n": 324,
+        "bins_5min": 272
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-06-30",
+        "n": 326,
+        "bins_5min": 278
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-01",
+        "n": 314,
+        "bins_5min": 279
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-02",
+        "n": 309,
+        "bins_5min": 279
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-03",
+        "n": 308,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-04",
+        "n": 317,
+        "bins_5min": 280
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-05",
+        "n": 307,
+        "bins_5min": 278
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-06",
+        "n": 325,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-07",
+        "n": 304,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-08",
+        "n": 338,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-09",
+        "n": 326,
+        "bins_5min": 280
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-10",
+        "n": 308,
+        "bins_5min": 274
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-11",
+        "n": 212,
+        "bins_5min": 185
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-22",
+        "n": 165,
+        "bins_5min": 134
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-23",
+        "n": 332,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-24",
+        "n": 337,
+        "bins_5min": 278
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-25",
+        "n": 338,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-26",
+        "n": 335,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-27",
+        "n": 351,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-28",
+        "n": 328,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-29",
+        "n": 332,
+        "bins_5min": 271
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-30",
+        "n": 341,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-07-31",
+        "n": 342,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-01",
+        "n": 334,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-02",
+        "n": 261,
+        "bins_5min": 220
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-04",
+        "n": 5,
+        "bins_5min": 3
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-07",
+        "n": 108,
+        "bins_5min": 84
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-08",
+        "n": 357,
+        "bins_5min": 285
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-09",
+        "n": 355,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-10",
+        "n": 361,
+        "bins_5min": 286
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-11",
+        "n": 348,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-12",
+        "n": 339,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-13",
+        "n": 349,
+        "bins_5min": 287
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-14",
+        "n": 363,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-15",
+        "n": 349,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-16",
+        "n": 343,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-17",
+        "n": 353,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-18",
+        "n": 331,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-19",
+        "n": 346,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-20",
+        "n": 341,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-21",
+        "n": 336,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-22",
+        "n": 341,
+        "bins_5min": 285
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-23",
+        "n": 369,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-24",
+        "n": 348,
+        "bins_5min": 286
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-25",
+        "n": 341,
+        "bins_5min": 283
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-26",
+        "n": 334,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-27",
+        "n": 326,
+        "bins_5min": 280
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-28",
+        "n": 348,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-29",
+        "n": 330,
+        "bins_5min": 280
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-30",
+        "n": 332,
+        "bins_5min": 279
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-08-31",
+        "n": 343,
+        "bins_5min": 281
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-01",
+        "n": 352,
+        "bins_5min": 285
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-02",
+        "n": 356,
+        "bins_5min": 286
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-03",
+        "n": 351,
+        "bins_5min": 285
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-04",
+        "n": 338,
+        "bins_5min": 284
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-05",
+        "n": 342,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-06",
+        "n": 334,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-07",
+        "n": 350,
+        "bins_5min": 285
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-08",
+        "n": 344,
+        "bins_5min": 282
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-09",
+        "n": 325,
+        "bins_5min": 270
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-10",
+        "n": 328,
+        "bins_5min": 268
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-11",
+        "n": 343,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-12",
+        "n": 322,
+        "bins_5min": 261
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-13",
+        "n": 320,
+        "bins_5min": 261
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-14",
+        "n": 355,
+        "bins_5min": 268
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-15",
+        "n": 342,
+        "bins_5min": 271
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-16",
+        "n": 340,
+        "bins_5min": 267
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-17",
+        "n": 339,
+        "bins_5min": 260
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-18",
+        "n": 347,
+        "bins_5min": 271
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-19",
+        "n": 338,
+        "bins_5min": 265
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-20",
+        "n": 336,
+        "bins_5min": 263
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-21",
+        "n": 344,
+        "bins_5min": 270
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-22",
+        "n": 342,
+        "bins_5min": 267
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-23",
+        "n": 346,
+        "bins_5min": 270
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-24",
+        "n": 346,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-25",
+        "n": 327,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-26",
+        "n": 329,
+        "bins_5min": 271
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-27",
+        "n": 329,
+        "bins_5min": 273
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-28",
+        "n": 328,
+        "bins_5min": 278
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-29",
+        "n": 332,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-09-30",
+        "n": 346,
+        "bins_5min": 270
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-01",
+        "n": 333,
+        "bins_5min": 276
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-02",
+        "n": 353,
+        "bins_5min": 270
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-03",
+        "n": 344,
+        "bins_5min": 277
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-04",
+        "n": 339,
+        "bins_5min": 263
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-05",
+        "n": 331,
+        "bins_5min": 274
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-06",
+        "n": 326,
+        "bins_5min": 280
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-07",
+        "n": 338,
+        "bins_5min": 275
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-08",
+        "n": 339,
+        "bins_5min": 274
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-09",
+        "n": 339,
+        "bins_5min": 273
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-10",
+        "n": 330,
+        "bins_5min": 273
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-11",
+        "n": 327,
+        "bins_5min": 269
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-12",
+        "n": 328,
+        "bins_5min": 278
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "day_jst": "2026-10-13",
+        "n": 147,
+        "bins_5min": 119
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "sensor",
+        "day_jst": "2026-07-22",
+        "n": 1,
+        "bins_5min": 1
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-13",
+        "n": 273,
+        "bins_5min": 273
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-14",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-15",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-16",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-17",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-18",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-19",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-20",
+        "n": 138,
+        "bins_5min": 138
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-12",
+        "n": 268,
+        "bins_5min": 268
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "day_jst": "2026-06-13",
+        "n": 15,
+        "bins_5min": 15
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-02",
+        "n": 240,
+        "bins_5min": 237
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-03",
+        "n": 287,
+        "bins_5min": 287
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-04",
+        "n": 286,
+        "bins_5min": 286
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-05",
+        "n": 287,
+        "bins_5min": 287
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-06",
+        "n": 287,
+        "bins_5min": 287
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-07",
+        "n": 286,
+        "bins_5min": 286
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-08",
+        "n": 288,
+        "bins_5min": 287
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-09",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-10",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "day_jst": "2026-06-11",
+        "n": 146,
+        "bins_5min": 146
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-04-26",
+        "n": 90,
+        "bins_5min": 75
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-12",
+        "n": 158,
+        "bins_5min": 155
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-13",
+        "n": 284,
+        "bins_5min": 284
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-14",
+        "n": 7,
+        "bins_5min": 7
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-18",
+        "n": 252,
+        "bins_5min": 250
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-19",
+        "n": 286,
+        "bins_5min": 286
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-20",
+        "n": 285,
+        "bins_5min": 285
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-21",
+        "n": 285,
+        "bins_5min": 285
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-22",
+        "n": 285,
+        "bins_5min": 285
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-23",
+        "n": 287,
+        "bins_5min": 287
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-24",
+        "n": 288,
+        "bins_5min": 288
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "day_jst": "2026-05-25",
+        "n": 260,
+        "bins_5min": 260
+      }
+    ],
+    "gaps": [
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-04-26 09:10:06.687046",
+        "next_jst": "2026-05-12 11:01:51.546256",
+        "seconds": "1389104.859210"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-07-11 15:40:00.3705",
+        "next_jst": "2026-07-22 12:39:07.554533",
+        "seconds": "939547.184033"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-14 00:32:18.567397",
+        "next_jst": "2026-05-18 02:35:51.48722",
+        "seconds": "353012.919823"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-08-04 10:49:59.450812",
+        "next_jst": "2026-08-07 17:02:43.522931",
+        "seconds": "281564.072119"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-08-02 19:16:39.29699",
+        "next_jst": "2026-08-04 10:35:15.481819",
+        "seconds": "141516.184829"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-06-15 19:45:00.505269",
+        "next_jst": "2026-06-16 07:26:00.777475",
+        "seconds": "42060.272206"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-06-13 04:35:01.915103",
+        "next_jst": "2026-06-13 06:30:47.343534",
+        "seconds": "6945.428431"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-09-09 15:10:56.959434",
+        "next_jst": "2026-09-09 15:42:06.768661",
+        "seconds": "1869.809227"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-09-09 15:44:05.604127",
+        "next_jst": "2026-09-09 16:13:07.558674",
+        "seconds": "1741.954547"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-18 08:44:13.214841",
+        "next_jst": "2026-05-18 09:12:22.232744",
+        "seconds": "1689.017903"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-10-13 10:14:14.528775",
+        "next_jst": "2026-10-13 10:32:37.179917",
+        "seconds": "1102.651142"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-13 02:09:20.276005",
+        "next_jst": "2026-05-13 02:19:29.454398",
+        "seconds": "609.178393"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-07-22 20:10:00.012279",
+        "next_jst": "2026-07-22 20:20:01.738157",
+        "seconds": "601.725878"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-07-24 05:50:01.038171",
+        "next_jst": "2026-07-24 06:00:01.835938",
+        "seconds": "600.797767"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-07-22 20:30:00.348282",
+        "next_jst": "2026-07-22 20:39:51.075316",
+        "seconds": "590.727034"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-09-09 17:36:52.541676",
+        "next_jst": "2026-09-09 17:46:36.134834",
+        "seconds": "583.593158"
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "prev_jst": "2026-06-08 07:57:43.847718",
+        "next_jst": "2026-06-08 08:05:00.882882",
+        "seconds": "437.035164"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-08-15 07:45:00.02026",
+        "next_jst": "2026-08-15 07:51:34.799814",
+        "seconds": "394.779554"
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "prev_jst": "2026-06-13 06:15:02.224511",
+        "next_jst": "2026-06-13 06:21:03.022505",
+        "seconds": "360.797994"
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "prev_jst": "2026-08-30 00:04:59.119669",
+        "next_jst": "2026-08-30 00:10:47.764503",
+        "seconds": "348.644834"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-20 05:18:06.978635",
+        "next_jst": "2026-05-20 05:23:15.253182",
+        "seconds": "308.274547"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-22 03:10:11.297577",
+        "next_jst": "2026-05-22 03:15:19.249843",
+        "seconds": "307.952266"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-13 04:20:36.462954",
+        "next_jst": "2026-05-13 04:25:44.302958",
+        "seconds": "307.840004"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-22 06:52:44.975115",
+        "next_jst": "2026-05-22 06:57:52.796897",
+        "seconds": "307.821782"
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "prev_jst": "2026-05-22 02:19:34.748476",
+        "next_jst": "2026-05-22 02:24:42.502703",
+        "seconds": "307.754227"
+      }
+    ],
+    "intervals": [
+      {
+        "device_id": "raspberrypi2",
+        "source": "raspberrypi2-ds18b20-bh1750-float",
+        "n": 35406,
+        "min": "0.000000",
+        "percentiles": [
+          2.32224925,
+          299.519754,
+          300.650751,
+          300.9989506
+        ],
+        "max": "939547.184033",
+        "duplicate_timestamps": 1,
+        "under_60s": 4861,
+        "over_600s": 10
+      },
+      {
+        "device_id": "raspberrypi2",
+        "source": "sensor",
+        "n": 0,
+        "min": null,
+        "percentiles": null,
+        "max": null,
+        "duplicate_timestamps": 0,
+        "under_60s": 0,
+        "over_600s": 0
+      },
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "n": 2138,
+        "min": "239.071991",
+        "percentiles": [
+          299.5495688,
+          299.999734,
+          300.44883995,
+          302.31993338
+        ],
+        "max": "360.797994",
+        "duplicate_timestamps": 0,
+        "under_60s": 0,
+        "over_600s": 0
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "n": 282,
+        "min": "134.953547",
+        "percentiles": [
+          299.5424937,
+          300.011129,
+          300.4312452,
+          302.34782993
+        ],
+        "max": "302.521662",
+        "duplicate_timestamps": 0,
+        "under_60s": 0,
+        "over_600s": 0
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "n": 2682,
+        "min": "14.348142",
+        "percentiles": [
+          299.62828035,
+          301.2407315,
+          301.5773364,
+          303.60734869
+        ],
+        "max": "437.035164",
+        "duplicate_timestamps": 0,
+        "under_60s": 1,
+        "over_600s": 0
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "n": 2766,
+        "min": "3.468079",
+        "percentiles": [
+          300.56424125,
+          302.683712,
+          303.84044825,
+          304.9770299
+        ],
+        "max": "1389104.859210",
+        "duplicate_timestamps": 0,
+        "under_60s": 19,
+        "over_600s": 4
+      }
+    ],
+    "coverage": [
+      {
+        "label": "after_recovery",
+        "a": "2026-07-22 04:00:00+00",
+        "b": "2026-08-02 10:15:00+00",
+        "expected": "3243.0000000000000000",
+        "rows": 3783,
+        "occupied_bins": 3117
+      },
+      {
+        "label": "full_grid",
+        "a": "2026-06-12 16:20:00+00",
+        "b": "2026-10-13 01:40:00+00",
+        "expected": "35248.000000000000",
+        "rows": 35407,
+        "occupied_bins": 29435
+      },
+      {
+        "label": "preaccident",
+        "a": "2026-07-21 15:00:00+00",
+        "b": "2026-08-02 10:15:00+00",
+        "expected": "3399.0000000000000000",
+        "rows": 3794,
+        "occupied_bins": 3122
+      }
+    ],
+    "distribution": [
+      {
+        "period": "other",
+        "n": 31613,
+        "temp_n": 20244,
+        "min": "19.187",
+        "max": "85.0",
+        "avg": "27.9709318810511757",
+        "temp_percentiles": [
+          22.437,
+          28.875,
+          31.75
+        ],
+        "lux_n": 20242,
+        "lux_min": "0.0",
+        "lux_max": "54612.5",
+        "lux_avg": "1203.3947287817409347",
+        "lux_percentiles": [
+          0,
+          1.7,
+          5882.80000000001
+        ],
+        "low_water": 12153,
+        "water_ok": 19460,
+        "float_null": 0,
+        "vitality_min": 0,
+        "vitality_max": 100,
+        "vitality_avg": "66.3605162433176225"
+      },
+      {
+        "period": "preaccident",
+        "n": 3794,
+        "temp_n": 3794,
+        "min": "25.25",
+        "max": "40.75",
+        "avg": "33.0637482867685820",
+        "temp_percentiles": [
+          27.22795,
+          32.812,
+          37.562
+        ],
+        "lux_n": 3794,
+        "lux_min": "0.0",
+        "lux_max": "54612.5",
+        "lux_avg": "2629.8778334211913548",
+        "lux_percentiles": [
+          0,
+          498.3,
+          12931.02
+        ],
+        "low_water": 0,
+        "water_ok": 3794,
+        "float_null": 0,
+        "vitality_min": 45,
+        "vitality_max": 100,
+        "vitality_avg": "58.0255666842382710"
+      }
+    ],
+    "nearest_coverage": [
+      {
+        "label": "after_recovery",
+        "expected": "3243.0000000000000000",
+        "rows": 3783,
+        "occupied": 3240,
+        "complete_slots": 3240
+      },
+      {
+        "label": "full_grid",
+        "expected": "35248.000000000000",
+        "rows": 35407,
+        "occupied": 30530,
+        "complete_slots": 20804
+      },
+      {
+        "label": "preaccident",
+        "expected": "3399.0000000000000000",
+        "rows": 3794,
+        "occupied": 3244,
+        "complete_slots": 3244
+      }
+    ],
+    "daily_quality": [
+      {
+        "day_jst": "2026-06-13",
+        "n": 254,
+        "temp_n": 253,
+        "lux_n": 251,
+        "low_water": 71,
+        "temp_min": "24.25",
+        "temp_max": "28.125",
+        "nearest_slots": 250
+      },
+      {
+        "day_jst": "2026-06-14",
+        "n": 288,
+        "temp_n": 288,
+        "lux_n": 288,
+        "low_water": 173,
+        "temp_min": "23.25",
+        "temp_max": "25.562",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-15",
+        "n": 254,
+        "temp_n": 254,
+        "lux_n": 254,
+        "low_water": 21,
+        "temp_min": "19.187",
+        "temp_max": "27.562",
+        "nearest_slots": 238
+      },
+      {
+        "day_jst": "2026-06-16",
+        "n": 220,
+        "temp_n": 220,
+        "lux_n": 220,
+        "low_water": 1,
+        "temp_min": "23.375",
+        "temp_max": "26.562",
+        "nearest_slots": 199
+      },
+      {
+        "day_jst": "2026-06-17",
+        "n": 317,
+        "temp_n": 317,
+        "lux_n": 317,
+        "low_water": 0,
+        "temp_min": "22.625",
+        "temp_max": "30.937",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-18",
+        "n": 314,
+        "temp_n": 314,
+        "lux_n": 314,
+        "low_water": 0,
+        "temp_min": "23.812",
+        "temp_max": "31.375",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-19",
+        "n": 322,
+        "temp_n": 322,
+        "lux_n": 322,
+        "low_water": 0,
+        "temp_min": "26.375",
+        "temp_max": "31.562",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-20",
+        "n": 321,
+        "temp_n": 321,
+        "lux_n": 321,
+        "low_water": 0,
+        "temp_min": "22.375",
+        "temp_max": "26.75",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-21",
+        "n": 336,
+        "temp_n": 336,
+        "lux_n": 336,
+        "low_water": 0,
+        "temp_min": "22.562",
+        "temp_max": "33.562",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-22",
+        "n": 333,
+        "temp_n": 333,
+        "lux_n": 333,
+        "low_water": 0,
+        "temp_min": "22.937",
+        "temp_max": "28.437",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-23",
+        "n": 310,
+        "temp_n": 310,
+        "lux_n": 310,
+        "low_water": 0,
+        "temp_min": "21.812",
+        "temp_max": "26.437",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-24",
+        "n": 328,
+        "temp_n": 328,
+        "lux_n": 328,
+        "low_water": 0,
+        "temp_min": "21.875",
+        "temp_max": "25.0",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-25",
+        "n": 315,
+        "temp_n": 315,
+        "lux_n": 315,
+        "low_water": 0,
+        "temp_min": "21.75",
+        "temp_max": "23.125",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-26",
+        "n": 310,
+        "temp_n": 310,
+        "lux_n": 310,
+        "low_water": 0,
+        "temp_min": "20.812",
+        "temp_max": "23.562",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-06-27",
+        "n": 310,
+        "temp_n": 310,
+        "lux_n": 310,
+        "low_water": 0,
+        "temp_min": "20.75",
+        "temp_max": "22.937",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-06-28",
+        "n": 320,
+        "temp_n": 320,
+        "lux_n": 320,
+        "low_water": 0,
+        "temp_min": "21.875",
+        "temp_max": "25.0",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-29",
+        "n": 324,
+        "temp_n": 324,
+        "lux_n": 324,
+        "low_water": 0,
+        "temp_min": "23.312",
+        "temp_max": "33.062",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-06-30",
+        "n": 326,
+        "temp_n": 326,
+        "lux_n": 326,
+        "low_water": 0,
+        "temp_min": "24.812",
+        "temp_max": "31.625",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-01",
+        "n": 314,
+        "temp_n": 314,
+        "lux_n": 314,
+        "low_water": 0,
+        "temp_min": "23.5",
+        "temp_max": "28.187",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-02",
+        "n": 309,
+        "temp_n": 309,
+        "lux_n": 309,
+        "low_water": 0,
+        "temp_min": "22.312",
+        "temp_max": "27.062",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-03",
+        "n": 308,
+        "temp_n": 308,
+        "lux_n": 308,
+        "low_water": 136,
+        "temp_min": "23.562",
+        "temp_max": "37.687",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-04",
+        "n": 317,
+        "temp_n": 317,
+        "lux_n": 317,
+        "low_water": 317,
+        "temp_min": "24.187",
+        "temp_max": "28.125",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-07-05",
+        "n": 307,
+        "temp_n": 307,
+        "lux_n": 307,
+        "low_water": 63,
+        "temp_min": "23.687",
+        "temp_max": "25.5",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-07-06",
+        "n": 325,
+        "temp_n": 325,
+        "lux_n": 325,
+        "low_water": 0,
+        "temp_min": "22.375",
+        "temp_max": "24.062",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-07",
+        "n": 304,
+        "temp_n": 304,
+        "lux_n": 304,
+        "low_water": 0,
+        "temp_min": "21.75",
+        "temp_max": "27.625",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-08",
+        "n": 338,
+        "temp_n": 338,
+        "lux_n": 338,
+        "low_water": 0,
+        "temp_min": "24.687",
+        "temp_max": "28.125",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-09",
+        "n": 326,
+        "temp_n": 326,
+        "lux_n": 326,
+        "low_water": 0,
+        "temp_min": "25.125",
+        "temp_max": "35.687",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-10",
+        "n": 308,
+        "temp_n": 308,
+        "lux_n": 308,
+        "low_water": 0,
+        "temp_min": "26.312",
+        "temp_max": "35.937",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-11",
+        "n": 212,
+        "temp_n": 212,
+        "lux_n": 212,
+        "low_water": 0,
+        "temp_min": "26.187",
+        "temp_max": "32.0",
+        "nearest_slots": 189
+      },
+      {
+        "day_jst": "2026-07-22",
+        "n": 165,
+        "temp_n": 165,
+        "lux_n": 165,
+        "low_water": 0,
+        "temp_min": "34.312",
+        "temp_max": "37.562",
+        "nearest_slots": 134
+      },
+      {
+        "day_jst": "2026-07-23",
+        "n": 332,
+        "temp_n": 332,
+        "lux_n": 332,
+        "low_water": 0,
+        "temp_min": "31.812",
+        "temp_max": "38.312",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-24",
+        "n": 337,
+        "temp_n": 337,
+        "lux_n": 337,
+        "low_water": 0,
+        "temp_min": "32.0",
+        "temp_max": "39.687",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-25",
+        "n": 338,
+        "temp_n": 338,
+        "lux_n": 338,
+        "low_water": 0,
+        "temp_min": "31.437",
+        "temp_max": "39.562",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-07-26",
+        "n": 335,
+        "temp_n": 335,
+        "lux_n": 335,
+        "low_water": 0,
+        "temp_min": "30.312",
+        "temp_max": "35.562",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-27",
+        "n": 351,
+        "temp_n": 351,
+        "lux_n": 351,
+        "low_water": 0,
+        "temp_min": "29.187",
+        "temp_max": "34.687",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-07-28",
+        "n": 328,
+        "temp_n": 328,
+        "lux_n": 328,
+        "low_water": 0,
+        "temp_min": "25.25",
+        "temp_max": "33.437",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-29",
+        "n": 332,
+        "temp_n": 332,
+        "lux_n": 332,
+        "low_water": 0,
+        "temp_min": "26.25",
+        "temp_max": "37.437",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-07-30",
+        "n": 341,
+        "temp_n": 341,
+        "lux_n": 341,
+        "low_water": 0,
+        "temp_min": "29.5",
+        "temp_max": "39.062",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-07-31",
+        "n": 342,
+        "temp_n": 342,
+        "lux_n": 342,
+        "low_water": 0,
+        "temp_min": "29.562",
+        "temp_max": "39.937",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-01",
+        "n": 334,
+        "temp_n": 334,
+        "lux_n": 334,
+        "low_water": 0,
+        "temp_min": "30.125",
+        "temp_max": "39.625",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-02",
+        "n": 261,
+        "temp_n": 261,
+        "lux_n": 261,
+        "low_water": 1,
+        "temp_min": "29.5",
+        "temp_max": "85.0",
+        "nearest_slots": 232
+      },
+      {
+        "day_jst": "2026-08-04",
+        "n": 5,
+        "temp_n": 5,
+        "lux_n": 5,
+        "low_water": 5,
+        "temp_min": "29.625",
+        "temp_max": "85.0",
+        "nearest_slots": 4
+      },
+      {
+        "day_jst": "2026-08-07",
+        "n": 108,
+        "temp_n": 108,
+        "lux_n": 108,
+        "low_water": 104,
+        "temp_min": "30.625",
+        "temp_max": "32.312",
+        "nearest_slots": 84
+      },
+      {
+        "day_jst": "2026-08-08",
+        "n": 357,
+        "temp_n": 357,
+        "lux_n": 357,
+        "low_water": 357,
+        "temp_min": "28.937",
+        "temp_max": "31.937",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-09",
+        "n": 355,
+        "temp_n": 355,
+        "lux_n": 355,
+        "low_water": 355,
+        "temp_min": "29.062",
+        "temp_max": "32.125",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-10",
+        "n": 361,
+        "temp_n": 361,
+        "lux_n": 361,
+        "low_water": 361,
+        "temp_min": "29.375",
+        "temp_max": "32.625",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-11",
+        "n": 348,
+        "temp_n": 348,
+        "lux_n": 348,
+        "low_water": 348,
+        "temp_min": "27.375",
+        "temp_max": "31.187",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-12",
+        "n": 339,
+        "temp_n": 339,
+        "lux_n": 339,
+        "low_water": 339,
+        "temp_min": "27.312",
+        "temp_max": "29.25",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-13",
+        "n": 349,
+        "temp_n": 349,
+        "lux_n": 349,
+        "low_water": 349,
+        "temp_min": "27.562",
+        "temp_max": "30.812",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-14",
+        "n": 363,
+        "temp_n": 363,
+        "lux_n": 363,
+        "low_water": 363,
+        "temp_min": "28.125",
+        "temp_max": "85.0",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-15",
+        "n": 349,
+        "temp_n": 349,
+        "lux_n": 349,
+        "low_water": 349,
+        "temp_min": "28.125",
+        "temp_max": "30.312",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-16",
+        "n": 343,
+        "temp_n": 343,
+        "lux_n": 343,
+        "low_water": 343,
+        "temp_min": "27.812",
+        "temp_max": "30.312",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-17",
+        "n": 353,
+        "temp_n": 353,
+        "lux_n": 353,
+        "low_water": 353,
+        "temp_min": "28.75",
+        "temp_max": "30.187",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-18",
+        "n": 331,
+        "temp_n": 331,
+        "lux_n": 331,
+        "low_water": 331,
+        "temp_min": "27.312",
+        "temp_max": "30.437",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-19",
+        "n": 346,
+        "temp_n": 346,
+        "lux_n": 346,
+        "low_water": 346,
+        "temp_min": "28.625",
+        "temp_max": "30.812",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-20",
+        "n": 341,
+        "temp_n": 341,
+        "lux_n": 341,
+        "low_water": 341,
+        "temp_min": "28.937",
+        "temp_max": "31.125",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-21",
+        "n": 336,
+        "temp_n": 336,
+        "lux_n": 336,
+        "low_water": 336,
+        "temp_min": "29.312",
+        "temp_max": "31.0",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-22",
+        "n": 341,
+        "temp_n": 341,
+        "lux_n": 341,
+        "low_water": 341,
+        "temp_min": "29.062",
+        "temp_max": "31.375",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-23",
+        "n": 369,
+        "temp_n": 369,
+        "lux_n": 369,
+        "low_water": 369,
+        "temp_min": "30.5",
+        "temp_max": "32.0",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-24",
+        "n": 348,
+        "temp_n": 348,
+        "lux_n": 348,
+        "low_water": 348,
+        "temp_min": "29.812",
+        "temp_max": "31.812",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-25",
+        "n": 341,
+        "temp_n": 341,
+        "lux_n": 341,
+        "low_water": 341,
+        "temp_min": "30.437",
+        "temp_max": "31.937",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-26",
+        "n": 334,
+        "temp_n": 334,
+        "lux_n": 334,
+        "low_water": 334,
+        "temp_min": "30.875",
+        "temp_max": "32.687",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-27",
+        "n": 326,
+        "temp_n": 326,
+        "lux_n": 326,
+        "low_water": 326,
+        "temp_min": "30.812",
+        "temp_max": "32.0",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-28",
+        "n": 348,
+        "temp_n": 348,
+        "lux_n": 348,
+        "low_water": 348,
+        "temp_min": "29.0",
+        "temp_max": "30.812",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-08-29",
+        "n": 330,
+        "temp_n": 330,
+        "lux_n": 330,
+        "low_water": 330,
+        "temp_min": "28.125",
+        "temp_max": "30.437",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-08-30",
+        "n": 332,
+        "temp_n": 332,
+        "lux_n": 332,
+        "low_water": 332,
+        "temp_min": "27.937",
+        "temp_max": "31.125",
+        "nearest_slots": 287
+      },
+      {
+        "day_jst": "2026-08-31",
+        "n": 343,
+        "temp_n": 343,
+        "lux_n": 343,
+        "low_water": 343,
+        "temp_min": "26.75",
+        "temp_max": "32.125",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-01",
+        "n": 352,
+        "temp_n": 352,
+        "lux_n": 352,
+        "low_water": 352,
+        "temp_min": "25.062",
+        "temp_max": "30.5",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-02",
+        "n": 356,
+        "temp_n": 356,
+        "lux_n": 356,
+        "low_water": 356,
+        "temp_min": "28.437",
+        "temp_max": "30.875",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-03",
+        "n": 351,
+        "temp_n": 351,
+        "lux_n": 351,
+        "low_water": 351,
+        "temp_min": "28.5",
+        "temp_max": "30.125",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-04",
+        "n": 338,
+        "temp_n": 338,
+        "lux_n": 338,
+        "low_water": 338,
+        "temp_min": "27.062",
+        "temp_max": "28.5",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-05",
+        "n": 342,
+        "temp_n": 342,
+        "lux_n": 342,
+        "low_water": 342,
+        "temp_min": "27.187",
+        "temp_max": "30.437",
+        "nearest_slots": 287
+      },
+      {
+        "day_jst": "2026-09-06",
+        "n": 334,
+        "temp_n": 334,
+        "lux_n": 334,
+        "low_water": 334,
+        "temp_min": "26.0",
+        "temp_max": "29.25",
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-07",
+        "n": 350,
+        "temp_n": 350,
+        "lux_n": 350,
+        "low_water": 350,
+        "temp_min": "27.937",
+        "temp_max": "29.0",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-08",
+        "n": 344,
+        "temp_n": 344,
+        "lux_n": 344,
+        "low_water": 344,
+        "temp_min": "26.75",
+        "temp_max": "29.687",
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-09",
+        "n": 325,
+        "temp_n": 210,
+        "lux_n": 210,
+        "low_water": 211,
+        "temp_min": "27.375",
+        "temp_max": "30.062",
+        "nearest_slots": 277
+      },
+      {
+        "day_jst": "2026-09-10",
+        "n": 328,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-11",
+        "n": 343,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-12",
+        "n": 322,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 287
+      },
+      {
+        "day_jst": "2026-09-13",
+        "n": 320,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-14",
+        "n": 355,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-15",
+        "n": 342,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-16",
+        "n": 340,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-17",
+        "n": 339,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-18",
+        "n": 347,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-19",
+        "n": 338,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-20",
+        "n": 336,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-21",
+        "n": 344,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-22",
+        "n": 342,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 287
+      },
+      {
+        "day_jst": "2026-09-23",
+        "n": 346,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-09-24",
+        "n": 346,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-25",
+        "n": 327,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-26",
+        "n": 329,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-27",
+        "n": 329,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-28",
+        "n": 328,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-29",
+        "n": 332,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-09-30",
+        "n": 346,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-10-01",
+        "n": 333,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-10-02",
+        "n": 353,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 287
+      },
+      {
+        "day_jst": "2026-10-03",
+        "n": 344,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-10-04",
+        "n": 339,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 289
+      },
+      {
+        "day_jst": "2026-10-05",
+        "n": 331,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-06",
+        "n": 326,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-07",
+        "n": 338,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-08",
+        "n": 339,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-09",
+        "n": 339,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-10",
+        "n": 330,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-11",
+        "n": 327,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-12",
+        "n": 328,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 288
+      },
+      {
+        "day_jst": "2026-10-13",
+        "n": 147,
+        "temp_n": 0,
+        "lux_n": 0,
+        "low_water": 0,
+        "temp_min": null,
+        "temp_max": null,
+        "nearest_slots": 124
+      }
+    ],
+    "anomalies": [
+      {
+        "kind": "temp85",
+        "n": 4,
+        "first_utc": "2026-08-02 10:16:39.29699+00",
+        "last_utc": "2026-08-14 08:20:10.538199+00"
+      },
+      {
+        "kind": "temperature_null",
+        "n": 11369,
+        "first_utc": "2026-06-12 19:35:01.915103+00",
+        "last_utc": "2026-10-13 01:35:00.669265+00"
+      },
+      {
+        "kind": "lux_null",
+        "n": 11371,
+        "first_utc": "2026-06-12 16:22:21.972648+00",
+        "last_utc": "2026-10-13 01:35:00.669265+00"
+      }
+    ],
+    "accident_values": [
+      {
+        "id": 20534,
+        "time_jst": "2026-08-02 18:45:00.074217",
+        "solution_temperature": "36.875",
+        "light_lux": "263.3",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20535,
+        "time_jst": "2026-08-02 18:50:00.488595",
+        "solution_temperature": "35.875",
+        "light_lux": "53.3",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20536,
+        "time_jst": "2026-08-02 18:55:00.901105",
+        "solution_temperature": "35.062",
+        "light_lux": "12.5",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20537,
+        "time_jst": "2026-08-02 18:59:59.895446",
+        "solution_temperature": "33.562",
+        "light_lux": "8.3",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20538,
+        "time_jst": "2026-08-02 19:00:02.078533",
+        "solution_temperature": "33.562",
+        "light_lux": "7.5",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20539,
+        "time_jst": "2026-08-02 19:05:01.819425",
+        "solution_temperature": "32.812",
+        "light_lux": "2.5",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20540,
+        "time_jst": "2026-08-02 19:10:00.132571",
+        "solution_temperature": "31.937",
+        "light_lux": "0.8",
+        "float_switch_state": "water_ok",
+        "vitality_score": 55
+      },
+      {
+        "id": 20541,
+        "time_jst": "2026-08-02 19:15:00.617939",
+        "solution_temperature": "29.5",
+        "light_lux": "0.8",
+        "float_switch_state": "water_ok",
+        "vitality_score": 79
+      },
+      {
+        "id": 20542,
+        "time_jst": "2026-08-02 19:16:39.29699",
+        "solution_temperature": "85.0",
+        "light_lux": "2800.8",
+        "float_switch_state": "low_water",
+        "vitality_score": 5
+      }
+    ],
+    "constraints": [
+      {
+        "indexdef": "CREATE UNIQUE INDEX sensor_logs_pkey ON public.sensor_logs USING btree (id)"
+      },
+      {
+        "indexdef": "CREATE INDEX sensor_logs_device_created_at_idx ON public.sensor_logs USING btree (device_id, created_at DESC)"
+      }
+    ],
+    "obs": [
+      {
+        "id": "a38278a5-e026-4211-ae1d-fc4fb7c916d1",
+        "observed_jst": "2026-06-17 03:37:32",
+        "created_jst": "2026-07-01 19:20:54.357952",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.5-flash",
+        "wilting": false,
+        "yellowing": false,
+        "summary": "Basil seeds have successfully germinated with approximately 12 seedlings displaying healthy green cotyledons. No true leaves have emerged yet, and several seeds remain ungerminated or in the early germination phase.",
+        "backfilled": "true"
+      },
+      {
+        "id": "d00cb7fe-2614-4cfa-817b-f7f98c5bba44",
+        "observed_jst": "2026-07-01 17:10:51",
+        "created_jst": "2026-07-01 22:09:38.83449",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.5-flash",
+        "wilting": true,
+        "yellowing": true,
+        "summary": "Basil seedlings growing on a white pad in a mesh strainer. Most seedlings have developed their first pair of true leaves alongside cotyledons. Some yellowing is visible on the rear plants, and there are a couple of wilted or collapsed seedlings at the front bottom.",
+        "backfilled": "true"
+      },
+      {
+        "id": "2e6c6cf2-7bcd-4d28-ba3c-4cfdb12bdd90",
+        "observed_jst": "2026-07-01 17:58:49.171899",
+        "created_jst": "2026-07-01 17:59:10.700457",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.5-flash",
+        "wilting": true,
+        "yellowing": true,
+        "summary": "Basil seedlings growing on a white substrate in a wire mesh trainer. Most seedlings have developed their first and second pairs of true leaves. Some seedlings at the bottom have wilted and collapsed, and there is noticeable yellowing/paleness on some of the upper-right leaves.",
+        "backfilled": null
+      },
+      {
+        "id": "5009edb6-8360-4f84-874c-2e21a60522cd",
+        "observed_jst": "2026-07-01 19:05:05.647079",
+        "created_jst": "2026-07-01 19:05:29.998389",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.5-flash",
+        "wilting": true,
+        "yellowing": true,
+        "summary": "Basil seedlings are growing in a mesh strainer with a white fiber substrate. Several healthy seedlings have developed 1-2 pairs of true leaves, though there are a few collapsed/wilted seedlings at the bottom and some yellowing/pale leaves on the right-side plants.",
+        "backfilled": null
+      },
+      {
+        "id": "dce5ec58-a00d-4c05-93e2-c9575b1e5aa5",
+        "observed_jst": "2026-07-05 04:58:21.631609",
+        "created_jst": "2026-07-05 04:58:39.11432",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.5-flash",
+        "wilting": false,
+        "yellowing": false,
+        "summary": "Multiple healthy basil seedlings are growing well on a white fiber substrate within a metal mesh strainer. Most plants have developed at least two pairs of true leaves, showing good vigor and a healthy green color with no signs of wilting.",
+        "backfilled": null
+      },
+      {
+        "id": "3af3fd87-81c5-49cf-94cc-1cb0f4e95b07",
+        "observed_jst": "2026-07-11 18:31:05.949099",
+        "created_jst": "2026-07-15 22:37:05.201253",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.1-flash-lite",
+        "wilting": false,
+        "yellowing": false,
+        "summary": "The basil plants are in the vegetative stage with multiple pairs of true leaves visible. They appear healthy but are quite crowded in the small container.",
+        "backfilled": null
+      },
+      {
+        "id": "84b483ca-69c0-4e5a-a883-c48008bda4c7",
+        "observed_jst": "2026-07-15 23:34:34.319649",
+        "created_jst": "2026-07-15 23:34:49.031857",
+        "device_id": "raspberrypi2",
+        "model": "gemini-3.1-flash-lite",
+        "wilting": false,
+        "yellowing": false,
+        "summary": "The basil plants are in the vegetative stage with multiple sets of true leaves visible. The plants are quite crowded in the small container.",
+        "backfilled": null
+      }
+    ],
+    "formal_normalized": [
+      {
+        "expected": 3243,
+        "matched": 3240,
+        "missing": [
+          "2026-07-22 20:15:00",
+          "2026-07-22 20:35:00",
+          "2026-07-24 05:55:00"
+        ],
+        "mean_offset": "0.59983395895061728395",
+        "offset_percentiles": [
+          0.489193,
+          1.44522925
+        ],
+        "max_offset": "4.110446",
+        "temp_mean": "33.0583496913580247",
+        "temp_sd": "2.9796569439781777",
+        "temp_min": "25.25",
+        "temp_max": "40.75",
+        "temp_quartiles": [
+          31.187,
+          32.812,
+          35.312
+        ],
+        "temp_ge30": 2846,
+        "temp_ge35": 925,
+        "lux_mean": "2636.3506481481481481",
+        "lux_percentiles": [
+          521.25,
+          12680.1649999999
+        ],
+        "low_water": 0,
+        "vitality_mean": "58.0845679012345679"
+      }
+    ],
+    "valid_ranges": [
+      {
+        "temp_first": "2026-06-13 01:22:21.972648",
+        "temp_last": "2026-09-09 15:09:59.462379",
+        "lux_last": "2026-09-09 15:09:59.462379",
+        "temp85": 4,
+        "temp_outside_screen": 4,
+        "lux_outside_screen": 0
+      }
+    ],
+    "other_distributions": [
+      {
+        "device_id": "raspi",
+        "source": "raspi-dht11-ds18b20-mcp3208",
+        "n": 2139,
+        "temp_n": 2139,
+        "temp_min": 23.6,
+        "temp_max": 31.4,
+        "temp_median": 27.2,
+        "humidity_n": 2139,
+        "humidity_min": 43,
+        "humidity_max": 74,
+        "pressure_n": 0,
+        "water_min": 1,
+        "water_max": 14,
+        "light_min": 18,
+        "light_max": 3459
+      },
+      {
+        "device_id": null,
+        "source": "dht11-ds18b20-mcp3208",
+        "n": 283,
+        "temp_n": 283,
+        "temp_min": 25.7,
+        "temp_max": 28.6,
+        "temp_median": 27.3,
+        "humidity_n": 283,
+        "humidity_min": 42,
+        "humidity_max": 60,
+        "pressure_n": 0,
+        "water_min": 0,
+        "water_max": 9,
+        "light_min": 29,
+        "light_max": 3133
+      },
+      {
+        "device_id": null,
+        "source": "dht11-mcp3204",
+        "n": 2683,
+        "temp_n": 2683,
+        "temp_min": 22.8,
+        "temp_max": 29.9,
+        "temp_median": 25.6,
+        "humidity_n": 2683,
+        "humidity_min": 43,
+        "humidity_max": 72,
+        "pressure_n": 0,
+        "water_min": 0,
+        "water_max": 2269,
+        "light_min": 42,
+        "light_max": 3434
+      },
+      {
+        "device_id": null,
+        "source": "sensor",
+        "n": 2767,
+        "temp_n": 2767,
+        "temp_min": 17.64,
+        "temp_max": 42.71,
+        "temp_median": 25.22,
+        "humidity_n": 2767,
+        "humidity_min": 23.72,
+        "humidity_max": 63.26,
+        "pressure_n": 2767,
+        "water_min": null,
+        "water_max": null,
+        "light_min": null,
+        "light_max": null
+      }
+    ]
+  }
+}

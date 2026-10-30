@@ -1,0 +1,71 @@
+{
+  "audit_date": "2026-10-30",
+  "github": {
+    "local_head": "a288f6d4fc0703fce2cd1f4f7ac208acd11ebef1",
+    "remote_head": "32b09a4db0dd3cb28e08f692fc7141726cfbca91",
+    "compare_url": "https://api.github.com/repos/YujiSK/plant-iot-visualization/compare/a288f6d...32b09a4db0dd3cb28e08f692fc7141726cfbca91",
+    "status": "ahead",
+    "ahead_by": 27,
+    "files": [
+      {
+        "filename": "docs/INCIDENT_ANALYSIS_PROGRESS_2026-09-05.md",
+        "status": "added"
+      },
+      {
+        "filename": "docs/THESIS_DIRECTION_2026-09-08.md",
+        "status": "added"
+      },
+      {
+        "filename": "docs/THESIS_DIRECTION_UPDATE_2026-09-18.md",
+        "status": "added"
+      },
+      {
+        "filename": "docs/THESIS_MEETING_SUMMARY_2026-09-08.md",
+        "status": "added"
+      },
+      {
+        "filename": "docs/THESIS_MEETING_SUMMARY_2026-09-08_DETAILED.md",
+        "status": "added"
+      },
+      {
+        "filename": "docs/THESIS_PROGRESS_CHECKLIST.md",
+        "status": "added"
+      }
+    ]
+  },
+  "connection_checks": [
+    {
+      "command": "ssh -F /dev/null -o BatchMode=yes -o ConnectTimeout=7 -o StrictHostKeyChecking=yes raspi hostname",
+      "result": "Could not resolve hostname raspi: Name or service not known"
+    },
+    {
+      "command": "tailscale status --json (output restricted to Self and Raspberry Pi peers)",
+      "self_hostname": "raspberrypi2",
+      "self_dns": "raspberrypi2.tail296d25.ts.net.",
+      "self_ipv4": "100.99.153.127",
+      "local_hostname": "raspi2",
+      "peer_hostname": "raspi1",
+      "peer_online": true
+    },
+    {
+      "command": "ssh -F /dev/null -o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/plant-iot-audit-known-hosts pi@raspi1.tail296d25.ts.net 'hostname; systemctl list-units --all --no-pager --plain \"plant*\"'",
+      "result": "Permission denied (publickey). No remote command executed."
+    }
+  ],
+  "safe_environment_settings": {
+    "DEVICE_ID": "raspberrypi2",
+    "LOCATION_ID": "location-b",
+    "BH1750_I2C_BUS": "1",
+    "BH1750_ADDRESS": "0x23",
+    "FLOAT_SWITCH_GPIO": "17",
+    "SENSOR_INTERVAL_SECONDS": "300"
+  },
+  "slack_public_search": {
+    "filters": "after:2026-10-12 before:2026-10-21",
+    "terms_separately": [
+      "ADC",
+      "給水"
+    ],
+    "results": "No results found; not proof of absence"
+  }
+}

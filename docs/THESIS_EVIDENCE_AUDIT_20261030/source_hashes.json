@@ -1,0 +1,16 @@
+{
+  "/home/pi/plant-iot/send_sensor_raspberrypi2.py": "35d7f87612b2ed67eb89d8c523bd8f68d49b705e4eb5e99cf2e5b25925219502",
+  "/home/pi/plant-iot/send_sensor_raspi.py": "4f693afdbbcf2b1cc38dcc589e8175c67b4cdfc8d63de6a1df1134f89d8e758d",
+  "/home/pi/plant-iot/outbox.py": "82017fd8df21d823f82cedd80e8e17be3d64e160a017f5989e46da535af2c685",
+  "/home/pi/plant-iot/alert_manager.py": "2bc8dee47ac9dcbae0bec8202f5e369cd4b3edeb28f2e717963edc813c64557c",
+  "/home/pi/plant-iot/slack_notifier.py": "4be3d819eb8b44593213e4200e263aa456c9c3a1176c68e95475ba50dfee80e7",
+  "/home/pi/plant-iot/supabase_health_check.py": "58b68d84efde5727d9cf10edc75a30bd31419a2f4c06bae9491932e26ae62d93",
+  "/home/pi/plant-iot/docs/PROJECT_LOG.md": "982f684f61d45455771832880f7fbe5ec635c4e892105f77ae175075d9315195",
+  "/home/pi/plant-iot/docs/NEXT_ACTIONS.md": "172bb0bcf40c43d150e1595f8c1b3355b74ae238bc40ac71edbbb743165e4e82",
+  "/home/pi/plant-iot/ds18b20.py": "cce452a06f8574ae2628463fb310d147b999b14495571804a16b5aba493c1fde",
+  "/home/pi/plant-iot/main.py": "fc6b9b83f643583db042161c28b2f0b78b2c6389bd71ea63b3e59734e565d4de",
+  "/home/pi/plant-iot/scripts/run_e2e_test.py": "a98c97df2ca343e2a0c3425a87a306b6cbb91b5cc1d621056e516addbaf29f37",
+  "/home/pi/plant-iot-moisture/moisture_logger.py": "a593182a85d742c05be9059dfb19757f4b620c5766097eda05cd3b633aa6706f",
+  "/home/pi/plant-iot-moisture/README.md": "0d3286b4dfbe64ef73ea66ccc58c970a0725441f1576c5acecb7f4c9eb60d754",
+  "/home/pi/.config/systemd/user/plant-iot-moisture-logger.service": "0198bb8c1e76c6496a488eb3a37ec28842b40b0e489833d4671962c08d98a122"
+}

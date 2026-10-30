@@ -1,0 +1,21 @@
+{
+  "adc_daily.csv": "55b8ed0e6b7a6b83229ee244058a1dc9310df870aeac853761d17a10b2835343",
+  "monthly.csv": "a33d61adc1d1859efb15498c40ad2a02fd2eda44eeb9ba61816a5fa04ea47bed",
+  "adc_snapshot.csv": "c73079e9b4adc388bb51e50c273db8d8920cda6ec60fd11cca23ec955d075db5",
+  "daily_counts_zero_filled.csv": "1cd637a6b796e9cf6ca10ae8583980ae912374289bff9dfe2fccae6487912ebf",
+  "audit_sqlite.py": "63b9a9e5b67ebb9881e471da5852c8405b83378f4144302e6ba0bb56a9522e7d",
+  "capture_runtime.py": "95028fb409a51c9b66c4e2faba96dea165a83371a3069bac2528d87551cd877a",
+  "sqlite_results.json": "333d1316418615d7b07adb63ed1d8957ac91188ae099f937187f547c8f432db6",
+  "source_hashes.json": "2c6da5b9ce424d5947766f17145d259363fdc9d375378deb84bca11f85d67251",
+  "daily_quality.csv": "a2353e0cecda5d2845de0af52aeaa16f7615e149bf56d9e634b08165440ce8f8",
+  "REPORT.md": "f933d17ca524d605ab65cea0e7d9abf235b1acc41cdafce0e310214259d76890",
+  "queries.sql": "b1c0a995a6d87996d6b98a5abdbf217ce2527006306054011e78b5ac834b56d4",
+  "daily.csv": "9ce1aec490b2819c6c695f86fbb808aca9bdfa5e6289c0791c52ac2f6200fe53",
+  "supplementary_evidence.json": "b0c39d6690293464a7fb18ef6e6584865d918655885a919ef164346a3360111f",
+  "supabase_results.json": "e44b67e13f5057c12421b1691d86b4452adb411d0edeed42fdbeb90fddab6ce2",
+  "runtime_evidence.txt": "4867a13f9b5d9f54badc04f410be397c94e1c55eb17e39bc1ba3959fb1ecc520",
+  "github/send_sensor_raspberrypi2.py": "e1caa5bdec2bcf2ae356e1f181fc547c72cb2a6c72e155b636908dee0cf5ad7e",
+  "github/docs/PROJECT_LOG.md": "5b41f58dee68055798e2ba7220d17df5db00da82c1b80364bf25371a4b38be5c",
+  "github/docs/THESIS_DIRECTION_UPDATE_2026-09-18.md": "6ead8ff9125b5b930719ee7a4dfe00b4194accfaf2143051900ae0c73b66efd6",
+  "github/docs/INCIDENT_ANALYSIS_PROGRESS_2026-09-05.md": "1f8b2e7ca923b4b254d7c4bdb6762ab436d4a13edc7511c607628c055464153a"
+}

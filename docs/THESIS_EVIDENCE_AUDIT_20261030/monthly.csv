@@ -1,0 +1,12 @@
+device_id,source,month_jst,n
+raspberrypi2,raspberrypi2-ds18b20-bh1750-float,2026-06,5502
+raspberrypi2,raspberrypi2-ds18b20-bh1750-float,2026-07,6569
+raspberrypi2,raspberrypi2-ds18b20-bh1750-float,2026-08,8991
+raspberrypi2,raspberrypi2-ds18b20-bh1750-float,2026-09,10171
+raspberrypi2,raspberrypi2-ds18b20-bh1750-float,2026-10,4174
+raspberrypi2,sensor,2026-07,1
+raspi,raspi-dht11-ds18b20-mcp3208,2026-06,2139
+,dht11-ds18b20-mcp3208,2026-06,283
+,dht11-mcp3204,2026-06,2683
+,sensor,2026-04,90
+,sensor,2026-05,2677
